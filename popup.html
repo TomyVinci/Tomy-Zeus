@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Tomy Modo Config</title>
+    <style>
+        body {
+            width: 600px;height: 90vh;font-family: Arial, sans-serif; padding: 10px; background: #121212;color: #fff;overflow-x: hidden;overflow-y: auto;padding-bottom: 30px;
+        }
+        h3 {
+            text-align: center; color: #ff3b5c; margin-top: 0;
+        }
+        .group {
+            margin-bottom: 12px;
+        }
+        label {
+            font-size: 12px; display: block; margin-bottom: 4px; color: #ccc;
+        }
+        input[type="text"], input[type="number"], select {
+            width: 100%; padding: 6px; box-sizing: border-box; background: #222; border: 1px solid #444; color: #fff; border-radius: 4px;
+        }
+        button {
+            width: 100%; padding: 10px; background: #ff3b5c; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;
+        }
+        button:hover {
+            background: #e0324d;
+        }
+        textarea:not(#motsNiveau3) {
+            width:100%; background:#222; color:#fff; border:1px solid #444; border-radius:4px;resize: none;
+        }
+        #motsNiveau3 {
+            width:100%; background:#222; color:#fff; border:1px solid #444; border-radius:4px;
+        }
+    </style>
+</head>
+<body>
+    <h3>🛡️ Tomy Modo</h3>
+
+    <button id="btnToggle">Activer le Modérateur</button>
+    <br/><br/>
+    
+    <div class="group">
+        <label>Nombre max de commentaires à répéter</label>
+        <input type="number" id="nbrRepeat" value="25">
+    </div>
+    <div class="group">
+        <label>Vider les répétitions toutes les (sec)</label>
+        <input type="number" id="timeReapeat" value="10">
+    </div>
+
+    <div class="group">
+        <label>Commentaire auto chaque (sec)</label>
+        <input type="number" id="messageAutoChaque" value="30">
+    </div>
+    <div class="group">
+        <label>seuil spam pour desactiver les commentaires</label>
+        <input type="number" id="seuilSpamDangereux" value="10">
+    </div>
+
+    <div class="group">
+        <label>Commentaires auto (séparés par des virgules)</label>
+        <textarea id="messageAuto" rows="3">🎉كبسو 👉🏻بارطاجيو➡️دعمو البث</textarea>
+    </div>
+    <div class="group">
+        <label>Mots interdits à bloquer (séparés par des virgules)</label>
+        <textarea id="motsNiveau1" rows="3"></textarea>
+    </div>
+
+    <div class="group">
+        <label>Accepter les insultes</label>
+        <select id="acceptInsult">
+           <option value="1">Non</option>
+           <option value="2">Oui</option>
+        </select>
+    </div>
+    <div class="group">
+        <label>Mots interdits à muter seulement (séparés par des virgules)</label>
+        <textarea id="motsNiveau3" rows="3">🍓,💀,☠,🐷,👽,🖕,nik,nyk,nic,نيك,qhab,qhaab,qahab,khab,kahab,k7ab,ka7ab,q7ab,q7aab,qa7ab,qahba,qahaba,kahaba,qa7ba,qa7aba,قحاب,قحبة,rkhis,rakhis,rkhas,rakhas,رخيس,رخاس,hachon,hatchon,7achon,7atchon,hachoun,hatchoun,7achoun,7atchoun,hachun,hatchun,7achun,7atchun,حشون,حتشون,طبون,sowa,sowwa,سوة,souwa,3ahir,عاهر,106,tizmok,tizmoc,tizmek,tizmak,tizmmok,tizmmoc,tizmmek,tizmmak,طزمك,طيزمك,zab,زبي,tramtak,tremtak,tremtek,tramtek,ترمتك,tarma,terma,ترمة,طيزامك,thakhna,thakhena,takhna,takhena,abouch,aboch,nbol,nboul,نبول,رنديلة,vetto,naqch,nakch,nkocha,nkucha,nqocha,nqucha,nqoucha,nkoucha,نقش,نقوشة,gwina,guina,قوينة,atay,attay,3atay,3attay,عطاي,makkak,makkac,makac,مكاك,zeb,kalb,klab,kelb,kleb,kalba,kaleba,hmar,hmara,كلب,كلاب,حمار,makak,zbi,aqjoun,aqjun,a9joun,a9jun,akjoun,akjun,aghyoul,aghyol,na3na,na3lat,رونديلة,harki,7arki,harka,7arka,حركي,حركة,جمال بنسماعيل,جمال بن سماعيل,بغل,pute,شوهاظة,شوهاظا,عتروس,فراولة,فيلاج اللفت,بوزعيتر,بوسبير,bghel,بغال,vitto,كرغولي,كراغلة,سنغولي,سناغلة,bghal,bighal,beghal,beghla,baghla,baghla,sewa,nadrabh,nadrebh,nedrabh,nedrebh,نضربه,نظربه,فراقش,بقر,لقيط,لقطاء,sewwa,nadhrabh,nadhrebh,nedhrabh,nedhrebh,rondila,rendila,rondela,rendela,khtok,kahba,khtak,ختك,يماك,باباك,wlid,wlad,وليد,ولاد,ولاد القاف,حرق,, نفرغه,قود,signalez,سينيالو,راهو لايف,راهي لايف,putasse,بيتاس,puta,suka,suck,ass,dick,cock,مثقوبة,مقعورة,ثقبة,قعرة,نمي,nami,nemi,nammi,nemmi,ahtit,a7tit,أحطيط,احطيط,تيكعولت,ثيكعولت,fuck,bitch,joder,حل لايف,حلت لايف,زايلة,مقران,مقحب,صهيوني,صهاينة,sioniste,zioniste,sionniste,zionniste,thoqba,thouqba,thou9ba,شرموط,شراميط,marochien,stkhnk,زب,سوّة,سوتمك,سوّتمك,9lawi,qlawi,qlwi,9elwa,qelwa,qlwa,terma,termet,termat,trmtymk,trmtk",طرمة,طيز,ذبيح,أشلاء,اشلاء,تعطي,زّب,dba7,dbe7,dbah,dbeh,dhba7,dhbe7,dhbah,dhbeh</textarea>
+    </div>
+
+    <button id="btnEdit">Modifier</button>
+    <br/><br/><br/>
+
+    <script src="popup.js"></script>
+</body>
+</html>
