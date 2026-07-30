@@ -22,18 +22,30 @@ const configor = {
     // Nombre de commentaires en chinois pour désactiver les commentaires
     seuilSpamDangereux: 10, 
     // Le ou les commentaires automatique à publier
-// Maria
+    // 
+    /*  =====================================================================
+        Ici de 1 à 6 c'est important
+        Vous supprimez les ligne non necessaires
+        pour activer une ligne vous supprimez les "//" au debut
+        pour désactiver une ligne vous ajoutez "//" au debut
+        un seul "messageAuto:.............." doit rester
+        Si vous ne savez pas comment vous contactez @tomy_zeus sur tiktok
+    =====================================================================  */ 
+// 1. Maria
     //messageAuto: ["🎉كبسو 👉🏻بارطاجيو➡️دعمو البث", "X: 13september13", "Ytb: MariaMoori"], 
-// Mirou
+// 2. Mirou
     //messageAuto: ["🎉كبسو 👉🏻بارطاجيو➡️دعمو البث", "Ytb: Mirou_Ath"], 
-// Emma
+// 3. Emma
     //messageAuto: ["🎉كبسو 👉🏻بارطاجيو➡️دعمو البث", "X: ftari272", "Ytb: anni8275"], 
-// Chawki
+// 4. Chawki
     //messageAuto: ["🎉كبسو 👉🏻بارطاجيو➡️دعمو البث", "X: ChawkiBenzehra", "Ytb: ChawkiBenzehra", "Insta: chawki_benzehra"], 
-// Comment only
+// 5. Comment only
     //messageAuto: ["🎉كبسو 👉🏻بارطاجيو➡️دعمو البث"], 
-// vide - security
+// 6. vide - security
     messageAuto: [""], 
+
+    /* FIN DE LA SECTION MESSAGE AUTO */
+
     removeAfter: false, // si true, chaque commentaire vérifié sera supprimé dans le PC (mais pas sur TIKTOK)
     // mots dangereux à ne pas toucher (mute)
     motsNiveau2: [
