@@ -24,7 +24,7 @@ const configor = {
     // Le ou les commentaires automatique à publier
     // 
     /*  =====================================================================
-        Ici de 1 à 6 c'est important
+        Ici de 1 à 7 c'est important
         Vous supprimez les ligne non necessaires
         pour activer une ligne vous supprimez les "//" au debut
         pour désactiver une ligne vous ajoutez "//" au debut
@@ -39,9 +39,11 @@ const configor = {
     //messageAuto: ["🎉كبسو 👉🏻بارطاجيو➡️دعمو البث", "X: ftari272", "Ytb: anni8275"], 
 // 4. Chawki
     //messageAuto: ["🎉كبسو 👉🏻بارطاجيو➡️دعمو البث", "X: ChawkiBenzehra", "Ytb: ChawkiBenzehra", "Insta: chawki_benzehra"], 
-// 5. Comment only
+// 5. Raid
+    //messageAuto: ["🎉كبسو 👉🏻بارطاجيو➡️دعمو البث", "Ytb: raid13h"], 
+// 6. Comment only
     //messageAuto: ["🎉كبسو 👉🏻بارطاجيو➡️دعمو البث"], 
-// 6. vide - security
+// 7. vide - security
     messageAuto: [""], 
 
     /* FIN DE LA SECTION MESSAGE AUTO */
