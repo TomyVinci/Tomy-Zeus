@@ -96,10 +96,16 @@ function chargerParametres(callback) {
 
 let interval_1 = null;
 let interval_2 = null;
+let interval_3 = null;
 let surveillanceTimeout = null;
 let isModoActive = false;
 let mutednbr = 0, blockednbr = 0, livedone = false; 
 let dernierCommentaireTimestamp = Date.now();
+let derniereSignatureChatExterne = "";
+let incidentNiveau4Actif = false;
+let rechargementEnCours = false;
+let nombreVerificationsChatAbsent = 0;
+const CLE_REPRISE_AUTOMATIQUE = "tomyModoRepriseApresReload";
 const trackerCompteurSpam = new Map();
 
 // File d'attente asynchrone pour encaisser les pics de 100 msg/sec sans rater ni bloquer le DOM
@@ -107,14 +113,50 @@ let moderationQueue = [];
 let isProcessingQueue = false;
 const MAX_QUEUE_SIZE = 40;
 
+let repriseAutomatiqueDemandee = false;
+
+try {
+    repriseAutomatiqueDemandee =
+        localStorage.getItem(CLE_REPRISE_AUTOMATIQUE) === "1";
+
+    if (repriseAutomatiqueDemandee) {
+        localStorage.removeItem(CLE_REPRISE_AUTOMATIQUE);
+    }
+} catch (error) {
+    console.warn(
+        "[Tomy] Impossible de lire le drapeau local de reprise :",
+        error.message
+    );
+}
+
 chrome.runtime.sendMessage(
     { action: "verifierEtat" },
     (response) => {
-        if (response && response.status) {
+        if (
+            repriseAutomatiqueDemandee ||
+            (response && response.status)
+        ) {
+            if (repriseAutomatiqueDemandee) {
+                console.warn(
+                    "[Tomy] 🔄 Reprise automatique après rechargement."
+                );
+
+                // Resynchroniser aussi l'état conservé par le background.
+                chrome.runtime.sendMessage({ action: "preparerReload" });
+            }
+
             activerModo();
         }
     }
 );
+
+// Secours : la reprise locale ne doit pas dépendre de la réponse
+// du service worker.
+if (repriseAutomatiqueDemandee) {
+    setTimeout(() => {
+        if (!isModoActive) activerModo();
+    }, 500);
+}
 
 function activerModo() {
     if (isModoActive) {
@@ -126,6 +168,11 @@ function activerModo() {
     livedone = false;
     mutednbr = 0;
     blockednbr = 0;
+    dernierCommentaireTimestamp = Date.now();
+    derniereSignatureChatExterne = "";
+    incidentNiveau4Actif = false;
+    rechargementEnCours = false;
+    nombreVerificationsChatAbsent = 0;
 
     chargerParametres(() => {
         console.warn("🛡️ [Tomy] Modérateur ACTIVÉ.");
@@ -140,6 +187,9 @@ function activerModo() {
         interval_1 = setInterval(() => {
             trackerCompteurSpam.clear();
         }, timeReapeat * 1000);
+
+        // Surveillance indépendante des commentaires automatiques.
+        interval_3 = setInterval(verifierEtatChat, 5000);
     });
 }
 chrome.runtime.onMessage.addListener((request) => {
@@ -190,7 +240,87 @@ function getDangerLevel(text) {
 // ==========================================
 
 function randomIntFromInterval(min, max) { return Math.floor(Math.random() * (max - min + 1) + min); }
-let nombreVerificationsChatAbsent = 0;
+
+function demanderRechargement(raison) {
+    if (rechargementEnCours || !isModoActive || livedone) return;
+
+    rechargementEnCours = true;
+    console.warn(`[Tomy] 🔄 ${raison} Sauvegarde de l’état puis rechargement.`);
+
+    // Ce drapeau garantit la reprise même si le service worker Chrome
+    // est endormi ou ne répond pas avant le rechargement.
+    try {
+        localStorage.setItem(CLE_REPRISE_AUTOMATIQUE, "1");
+    } catch (error) {
+        console.error(
+            "[Tomy] Impossible d'enregistrer le drapeau local de reprise :",
+            error.message
+        );
+    }
+
+    chrome.runtime.sendMessage(
+        { action: "preparerReload" },
+        () => location.reload()
+    );
+
+    // Secours si la réponse du service worker n'arrive pas.
+    setTimeout(() => {
+        if (rechargementEnCours) location.reload();
+    }, 1500);
+}
+
+function verifierEtatChat() {
+    if (!isModoActive || livedone || rechargementEnCours) return;
+
+    const chatContainer = document.querySelector(
+        '[data-e2e="live-chat-container"]'
+    );
+    const inputChat = document.querySelector(
+        '[data-e2e="room-chat-input-field"]'
+    );
+
+    if (!chatContainer || !inputChat) {
+        nombreVerificationsChatAbsent++;
+    } else {
+        nombreVerificationsChatAbsent = 0;
+    }
+
+    if (nombreVerificationsChatAbsent >= 3) {
+        demanderRechargement(
+            "Interface du chat absente pendant 15 secondes."
+        );
+        return;
+    }
+
+    const chatFige =
+        Date.now() - dernierCommentaireTimestamp > 45000;
+
+    if (chatFige) {
+        demanderRechargement(
+            "Chat probablement figé : aucun nouveau commentaire externe distinct depuis 45 secondes."
+        );
+    }
+}
+
+function enregistrerActiviteChat(contenu) {
+    const texte = String(contenu || "").trim();
+    if (!texte) return;
+
+    const estCommentaireAutomatique = configor.messageAuto.some(
+        message => String(message).trim() === texte
+    );
+
+    // Les commentaires automatiques locaux et la répétition du même
+    // commentaire bloquant ne doivent pas faire croire que le chat avance.
+    if (
+        !estCommentaireAutomatique &&
+        texte !== derniereSignatureChatExterne
+    ) {
+        derniereSignatureChatExterne = texte;
+        dernierCommentaireTimestamp = Date.now();
+    }
+}
+
 function postAutomatedComment() {
     const chatContainer = document.querySelector(
         '[data-e2e="live-chat-container"]'
@@ -204,27 +334,8 @@ function postAutomatedComment() {
         '[data-e2e="room-chat-send-btn"]'
     );
 
-    if (!chatContainer || !inputChat) {
-        nombreVerificationsChatAbsent++;
-    } else {
-        nombreVerificationsChatAbsent = 0;
-    }
-
-    if (nombreVerificationsChatAbsent >= 3) {
-        console.warn(
-            "[Tomy] Interface du chat absente trois fois. " +
-            "Rechargement."
-        );
-
-        chrome.runtime.sendMessage(
-            { action: "preparerReload" },
-            () => location.reload()
-        );
-
-        return;
-    }
-
     if (
+        !chatContainer ||
         !inputChat ||
         !sendBtn ||
         configor.messageAuto.length === 0
@@ -452,6 +563,9 @@ async function disableAllComments() {
     }
 
     desactivationCommentairesEnCours = true;
+    console.warn(
+        "[Tomy] 🚨 disableAllComments() lancée : ouverture des réglages du chat."
+    );
     try {
         automatiserNouvelleFenetre();
         const toggleBtn = document.querySelector('[data-e2e="live-chat-container"]');
@@ -566,27 +680,35 @@ async function executerFileModeration() {
                     }
                 });
                 if (dangerLevel === 4) {
-                    // Niveau 4 : muter puis bloquer
-                    if (!muteLiveBtn) {
+                    // Niveau 4 : muter d'abord, puis bloquer si possible.
+                    if (!muteLiveBtn && !blockBtn) {
                         throw new Error(
-                            "Bouton de sourdine introuvable pour le niveau 4"
+                            "Boutons de sourdine et de blocage introuvables pour le niveau 4"
                         );
                     }
 
-                    if (!blockBtn) {
-                        throw new Error(
-                            "Bouton de blocage introuvable pour le niveau 4"
+                    if (muteLiveBtn) {
+                        muteLiveBtn.click();
+                        mutednbr++;
+                        console.log("[Tomy] Action réussie : niveau 4 mis en sourdine.");
+
+                        // Laisser à TikTok le temps de traiter la sourdine.
+                        await new Promise(r => setTimeout(r, 75));
+                    } else {
+                        console.warn(
+                            "[Tomy] Niveau 4 : sourdine indisponible, tentative de blocage direct."
                         );
                     }
 
-                    muteLiveBtn.click();
-                    mutednbr++;
-
-                    // Laisser à TikTok le temps de traiter la sourdine
-                    await new Promise(r => setTimeout(r, 75));
-
-                    blockBtn.click();
-                    blockednbr++;
+                    if (blockBtn) {
+                        blockBtn.click();
+                        blockednbr++;
+                        console.log("[Tomy] Action tentée : niveau 4 bloqué.");
+                    } else {
+                        console.warn(
+                            "[Tomy] Niveau 4 mis en sourdine, mais bouton de blocage introuvable."
+                        );
+                    }
 
                     commentNode.dataset.modere = "true";
                 }
@@ -631,28 +753,49 @@ async function executerFileModeration() {
 // ==========================================
 // 6. BOUCLE DE SURVEILLANCE
 // ==========================================
-const niveau4Recents = [];
+let compteurNiveau4Rafale = 0;
+let dernierNiveau4Timestamp = 0;
+let resetNiveau4Timeout = null;
 let commentairesNiveau4Comptes = new WeakSet();
 function enregistrerNiveau4() {
     const maintenant = Date.now();
     const fenetreMs = timeReapeat * 1000;
 
-    niveau4Recents.push(maintenant);
-
-    while (
-        niveau4Recents.length > 0 &&
-        niveau4Recents[0] < maintenant - fenetreMs
+    // Une nouvelle rafale commence après une période sans niveau 4.
+    if (
+        dernierNiveau4Timestamp === 0 ||
+        maintenant - dernierNiveau4Timestamp > fenetreMs
     ) {
-        niveau4Recents.shift();
+        compteurNiveau4Rafale = 0;
     }
 
-    if (niveau4Recents.length >= configor.seuilSpamDangereux) {
+    dernierNiveau4Timestamp = maintenant;
+    compteurNiveau4Rafale++;
+    incidentNiveau4Actif = true;
+
+    clearTimeout(resetNiveau4Timeout);
+    resetNiveau4Timeout = setTimeout(() => {
+        compteurNiveau4Rafale = 0;
+        dernierNiveau4Timestamp = 0;
+        console.log(
+            `[Tomy] Compteur niveau 4 remis à zéro après ${timeReapeat} secondes sans nouvelle détection.`
+        );
+    }, fenetreMs);
+
+    console.warn(
+        `[Tomy] Compteur raid niveau 4 : ${compteurNiveau4Rafale}/${configor.seuilSpamDangereux}.`
+    );
+
+    if (compteurNiveau4Rafale >= configor.seuilSpamDangereux) {
         console.warn(
-            `[Tomy] ⚠️ Raid détecté : ${niveau4Recents.length} commentaires niveau 4 en ${timeReapeat} secondes.`
+            `[Tomy] 🚨 Seuil atteint : tentative immédiate de désactivation des commentaires.`
         );
 
-        niveau4Recents.length = 0;
-        disableAllComments();
+        compteurNiveau4Rafale = 0;
+        dernierNiveau4Timestamp = 0;
+        clearTimeout(resetNiveau4Timeout);
+        resetNiveau4Timeout = null;
+        void disableAllComments();
     }
 }
 function demarrerSurveillance() {
@@ -670,14 +813,13 @@ function demarrerSurveillance() {
     
     if (commentaires && commentaires.length > 0) {
         commentaires.forEach(node => {
-            dernierCommentaireTimestamp = Date.now();
-
             try {
                 var sonfils_1 = node.getElementsByTagName('div');
                 if (sonfils_1 && sonfils_1[2]) {
                     var sonfils_2 = sonfils_1[2].getElementsByTagName('div');
                     if (sonfils_2 && sonfils_2[3]) {
                         const contenu = sonfils_2[3].textContent;
+                        enregistrerActiviteChat(contenu);
                         const danger = getDangerLevel(contenu);
 
                         if (danger == 2 || danger == 3) {
@@ -735,11 +877,15 @@ function demarrerSurveillance() {
 function arreterModoComplet() {
     clearInterval(interval_1);
     clearInterval(interval_2);
+    clearInterval(interval_3);
     clearTimeout(surveillanceTimeout);
+    clearTimeout(resetNiveau4Timeout);
 
     interval_1 = null;
     interval_2 = null;
+    interval_3 = null;
     surveillanceTimeout = null;
+    resetNiveau4Timeout = null;
 
     isModoActive = false;
     livedone = true;
@@ -747,11 +893,15 @@ function arreterModoComplet() {
     moderationQueue = [];
     isProcessingQueue = false;
     trackerCompteurSpam.clear();
-    niveau4Recents.length = 0;
+    compteurNiveau4Rafale = 0;
+    dernierNiveau4Timestamp = 0;
     commentairesNiveau4Comptes = new WeakSet();
 
     desactivationCommentairesEnCours = false;
     commentairesDesactivesParExtension = false;
     nombreVerificationsChatAbsent = 0;
+    derniereSignatureChatExterne = "";
+    incidentNiveau4Actif = false;
+    rechargementEnCours = false;
 }
 console.warn("[Tomy] 🛡️ Modérateur TikTok anti-trolls prêt avec file d'attente optimisée !");
