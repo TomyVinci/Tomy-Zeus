@@ -58,13 +58,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnEdit) {
         btnEdit.addEventListener('click', () => {
             const configData = {
-                nbrRepeat: Number(nbrRepeat.value) || 200,
-                timeReapeat: Number(timeReapeat.value) || 10,
-                messageAutoChaque: Number(messageAutoChaque.value) || 30,
-                seuilSpamDangereux: Number(seuilSpamDangereux.value) || 10,
+
+                nbrRepeat: nombreValide(nbrRepeat, 200, 1, 10000),
+                timeReapeat: nombreValide(timeReapeat, 10, 1, 3600),
+                messageAutoChaque: nombreValide(messageAutoChaque, 30, 5, 86400),
+                seuilSpamDangereux: nombreValide(seuilSpamDangereux,10,1,10000),
+
                 messageAuto: messageAuto.value || "",
                 motsNiveau1: motsNiveau1.value || "",
-                acceptInsult: Number(acceptInsult.value) || 1,
+                acceptInsult: Number(acceptInsult.value) || 0,
                 motsNiveau3: motsNiveau3.value || ""
             };
 
@@ -78,6 +80,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, 1500);
             });
         });
+    }
+
+    function nombreValide(element, valeurDefaut, minimum, maximum) {
+        const valeur = Number(element.value);
+
+        if (!Number.isFinite(valeur)) {
+            return valeurDefaut;
+        }
+
+        return Math.min(maximum, Math.max(minimum, valeur));
     }
 
     function updateButtonState(isActive) {

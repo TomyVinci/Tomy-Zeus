@@ -10,7 +10,7 @@ let messageAutoChaque = 30;
 let nbrRepeat = 200;
 let timeReapeat = 10;
 const configor = {
-    acceptInsult: false, 
+    acceptInsult: 0, 
     seuilSpamDangereux: 10, 
     messageAuto: [""], 
     removeAfter: false, 
@@ -39,28 +39,41 @@ const configor = {
         "aqjoun", "aqjun", "a9joun", "a9jun", "akjoun", "akjun", "aghyoul", "aghyol", "na3na", "na3lat", "رونديلة", 
         "harki", "7arki", "harka", "7arka", "حركي", "حركة", "جمال بنسماعيل", "جمال بن سماعيل", "بغل", "pute", 
         "شوهاظة", "شوهاظا", "عتروس", "فراولة", "فيلاج اللفت", "بوزعيتر", "بوسبير", "bghel", "بغال", "vitto", 
-        "كرغولي", "كراغلة", "سنغولي", "سناغلة", "bghal", "bighal", "beghal", "beghla", "baghla", "baghla", "sewa", 
+        "كرغولي", "كراغلة", "سنغولي", "سناغلة", "bghal", "bighal", "beghal", "beghla", "baghla", "sewa", 
         "nadrabh", "nadrebh", "nedrabh", "nedrebh", "نضربه", "نظربه", "فراقش", "بقر", "لقيط", "لقطاء", "sewwa", 
         "nadhrabh", "nadhrebh", "nedhrabh", "nedhrebh", "rondila", "rendila", "rondela", "rendela", "khtok", "kahba", 
         "khtak", "ختك", "يماك", "باباك", "wlid", "wlad", "وليد", "ولاد", "ولاد القاف", "حرق", "نفرغه", "قود", 
-        "signalez", "سينيالو", "راهو لايف", "راهي لايف", "putasse", "بيتاس", "puta", "suka", "suck", "ass", 
+        "signalez", "سينيالو", "راهو لايف", "راهي لايف", "putasse", "بيتاس", "puta", "suka", "suck", 
         "dick", "cock", "مثقوبة", "مقعورة", "ثقبة", "قعرة", "نمي", "nami", "nemi", "nammi", "nemmi", "ahtit", 
         "a7tit", "أحطيط", "احطيط", "تيكعولت", "ثيكعولت", "fuck", "bitch", "joder", "حل لايف", "حلت لايف", 
         "زايلة", "مقران", "مقحب", "صهيوني", "صهاينة", "sioniste", "zioniste", "sionniste", "zionniste", "thoqba", 
         "thouqba", "thou9ba", "شرموط", "شراميط", "marochien", "stkhnk", "زب", "سوّة", "سوتمك", "سوّتمك", 
-        "9lawi", "qlawi", "qlwi", "9elwa", "qelwa", "qlwa", "terma", "termet", "termat", "trmtymk", "trmtk",
+        "9lawi", "qlawi", "qlwi", "9elwa", "qelwa", "qlwa", "termet", "termat", "trmtymk", "trmtk",
         "طرمة", "طيز", "ذبيح", "أشلاء", "اشلاء", "تعطي", "زّب", "dba7", "dbe7", "dbah", "dbeh", "dhba7", "dhbe7", 
         "dhbah", "dhbeh"
-    ], 
+    ],
     motsNiveau1: ["فداج", "feddaj", "feddadj", "faddaj", "faddadj"]
 };
 
 // ==========================================
 // 2. CHARGEMENT DES PARAMÈTRES
 // ==========================================
+function nettoyerListe(valeur, mettreEnMinuscules = false) {
+    const liste = Array.isArray(valeur)
+        ? valeur
+        : String(valeur ?? "").split(",");
+
+    return [...new Set(
+        liste
+            .map(element => String(element).trim())
+            .filter(element => element.length > 0)
+            .map(element => mettreEnMinuscules ? element.toLowerCase() : element)
+    )];
+}
 function chargerParametres(callback) {
     var localostomios = [
-        'nbrRepeat', 'timeReapeat', 'messageAutoChaque', 'seuilSpamDangereux', 'messageAuto', 'motsNiveau1', 'acceptInsult', 'motsNiveau3'
+        'nbrRepeat', 'timeReapeat', 'messageAutoChaque', 'seuilSpamDangereux', 'messageAuto', 'motsNiveau1', 
+        'acceptInsult', 'motsNiveau3'
     ];
     chrome.storage.local.get(localostomios, (data) => {
         if (!chrome.runtime.lastError) {
@@ -68,17 +81,15 @@ function chargerParametres(callback) {
             if (data.timeReapeat !== undefined) timeReapeat = Number(data.timeReapeat);
             if (data.messageAutoChaque !== undefined) messageAutoChaque = Number(data.messageAutoChaque);
             if (data.seuilSpamDangereux !== undefined) configor.seuilSpamDangereux = Number(data.seuilSpamDangereux);
-            if (data.messageAuto !== undefined) {
-                configor.messageAuto = typeof data.messageAuto === 'string' ? data.messageAuto.split(',').map(m => m.trim()) : data.messageAuto;
-            }
-            if (data.motsNiveau1 !== undefined) {
-                configor.motsNiveau1 = typeof data.motsNiveau1 === 'string' ? data.motsNiveau1.split(',').map(m => m.trim()) : data.motsNiveau1;
-            }
-            if (data.acceptInsult !== undefined) configor.acceptInsult = Boolean(data.acceptInsult);
-            if (data.motsNiveau3 !== undefined) {
-                configor.motsNiveau3 = typeof data.motsNiveau3 === 'string' ? data.motsNiveau3.split(',').map(m => m.trim()) : data.motsNiveau3;
-            }
+            if (data.acceptInsult !== undefined) configor.acceptInsult = Number(data.acceptInsult) === 1;
+            if (data.messageAuto !== undefined) {configor.messageAuto = nettoyerListe(data.messageAuto);}
+            if (data.motsNiveau1 !== undefined) {configor.motsNiveau1 = nettoyerListe(data.motsNiveau1, true);}
+            if (data.motsNiveau3 !== undefined) {configor.motsNiveau3 = nettoyerListe(data.motsNiveau3, true);}
         }
+        configor.messageAuto = nettoyerListe(configor.messageAuto);
+        configor.motsNiveau1 = nettoyerListe(configor.motsNiveau1, true);
+        configor.motsNiveau2 = nettoyerListe(configor.motsNiveau2, true);
+        configor.motsNiveau3 = nettoyerListe(configor.motsNiveau3, true);
         if (callback) callback();
     });
 }
@@ -96,30 +107,45 @@ let moderationQueue = [];
 let isProcessingQueue = false;
 const MAX_QUEUE_SIZE = 40;
 
-chrome.runtime.sendMessage({ action: "verifierEtat" }, (response) => {
-    if (response && response.status) {
-        chargerParametres(() => {
-            console.warn("🔄 [Tomy] Reprise automatique avec les paramètres du popup !");
-            isModoActive = true;
-            demarrerSurveillance();
-            interval_2 = setInterval(postAutomatedComment, messageAutoChaque * 1000);
-            interval_1 = setInterval(() => { trackerCompteurSpam.clear() }, timeReapeat * 1000);
-        });
+chrome.runtime.sendMessage(
+    { action: "verifierEtat" },
+    (response) => {
+        if (response && response.status) {
+            activerModo();
+        }
     }
-});
+);
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+function activerModo() {
+    if (isModoActive) {
+        console.warn("[Tomy] Le modérateur est déjà actif.");
+        return;
+    }
+
+    isModoActive = true;
+    livedone = false;
+    mutednbr = 0;
+    blockednbr = 0;
+
+    chargerParametres(() => {
+        console.warn("🛡️ [Tomy] Modérateur ACTIVÉ.");
+
+        demarrerSurveillance();
+
+        interval_2 = setInterval(
+            postAutomatedComment,
+            messageAutoChaque * 1000
+        );
+
+        interval_1 = setInterval(() => {
+            trackerCompteurSpam.clear();
+        }, timeReapeat * 1000);
+    });
+}
+chrome.runtime.onMessage.addListener((request) => {
     if (request.action === "toggle") {
-        isModoActive = request.status;
-
-        if (isModoActive) {
-            chargerParametres(() => {
-                console.warn("🛡️ [Tomy] Modérateur ACTIVÉ via le Popup.");
-                livedone = false;
-                demarrerSurveillance();
-                interval_2 = setInterval(postAutomatedComment, messageAutoChaque * 1000);
-                interval_1 = setInterval(() => { trackerCompteurSpam.clear(); }, timeReapeat * 1000);
-            });
+        if (request.status) {
+            activerModo();
         } else {
             console.warn("🛑 [Tomy] Modérateur ARRÊTÉ.");
             arreterModoComplet();
@@ -143,19 +169,19 @@ function getDangerLevel(text) {
     
     const textLower = text.toLowerCase().trim();
 
+    if (configor.motsNiveau1.some(mot => mot && textLower.includes(mot))) return 4;
+    if (!configor.acceptInsult && configor.motsNiveau3.some(mot => mot && textLower.includes(mot))) return 3;
+    if (configor.motsNiveau2.some(mot => mot && textLower.includes(mot))) return 2;
+
     if (textLower !== "3" && textLower !== "2" && textLower !== "1" && textLower !== "up") {
         let count = trackerCompteurSpam.get(textLower) || 0;
         count++;
         trackerCompteurSpam.set(textLower, count);
         
         if (count > nbrRepeat) {
-            return 2; // Spam répétitif (200 fois en 10 secondes)
+            return 2;
         }
     }
-
-    if (configor.motsNiveau2.some(mot => textLower.includes(mot))) return 2;
-    if (!configor.acceptInsult && configor.motsNiveau3.some(mot => textLower.includes(mot))) return 3;
-    if (configor.motsNiveau1.some(mot => textLower.includes(mot))) return 4;
     return 0; 
 }
 
@@ -164,45 +190,96 @@ function getDangerLevel(text) {
 // ==========================================
 
 function randomIntFromInterval(min, max) { return Math.floor(Math.random() * (max - min + 1) + min); }
-
+let nombreVerificationsChatAbsent = 0;
 function postAutomatedComment() {
-    var actualCommentaireTimestamp = Date.now();
-    var diff = actualCommentaireTimestamp - dernierCommentaireTimestamp;
+    const chatContainer = document.querySelector(
+        '[data-e2e="live-chat-container"]'
+    );
 
-    if (diff > 45000) {
-        console.warn("⚠️ [Tomy] Le chat TikTok semble bloqué (aucun message reçu depuis 45s). Actualisation automatique de la page...");
-        chrome.runtime.sendMessage({ action: "preparerReload" }, () => {
-            location.reload(); 
-        });
+    const inputChat = document.querySelector(
+        '[data-e2e="room-chat-input-field"]'
+    );
+
+    const sendBtn = document.querySelector(
+        '[data-e2e="room-chat-send-btn"]'
+    );
+
+    if (!chatContainer || !inputChat) {
+        nombreVerificationsChatAbsent++;
+    } else {
+        nombreVerificationsChatAbsent = 0;
+    }
+
+    if (nombreVerificationsChatAbsent >= 3) {
+        console.warn(
+            "[Tomy] Interface du chat absente trois fois. " +
+            "Rechargement."
+        );
+
+        chrome.runtime.sendMessage(
+            { action: "preparerReload" },
+            () => location.reload()
+        );
+
         return;
     }
 
-    const input = document.querySelector('[data-e2e="room-chat-input-field"]'); 
-    const sendBtn = document.querySelector('[data-e2e="room-chat-send-btn"]');
-
-    if (configor.messageAuto.length > 0 && configor.messageAuto[0] !== "") {
-        let commentaire = configor.messageAuto[0];
-        if (configor.messageAuto.length > 1) {
-            commentaire = configor.messageAuto[randomIntFromInterval(0, configor.messageAuto.length - 1)];
-        }
-        
-        if (input && sendBtn) {
-            input.focus();
-            document.execCommand('insertText', false, commentaire);
-
-            if (input.textContent !== commentaire) {
-                input.textContent = commentaire;
-                input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: commentaire }));
-            }
-
-            setTimeout(() => {
-                sendBtn.removeAttribute('disabled');
-                sendBtn.click();
-                console.log("[Tomy] Commentaire envoyé : " + commentaire);
-                console.log("[Tomy] Mutes : " + mutednbr + " -- Blocks : " + blockednbr);
-            }, 400);
-        }
+    if (
+        !inputChat ||
+        !sendBtn ||
+        configor.messageAuto.length === 0
+    ) {
+        return;
     }
+
+    let commentaire = configor.messageAuto[0];
+
+    if (configor.messageAuto.length > 1) {
+        commentaire = configor.messageAuto[
+            randomIntFromInterval(
+                0,
+                configor.messageAuto.length - 1
+            )
+        ];
+    }
+
+    if (!commentaire) return;
+
+    inputChat.focus();
+
+    document.execCommand(
+        "insertText",
+        false,
+        commentaire
+    );
+
+    if (inputChat.textContent !== commentaire) {
+        inputChat.textContent = commentaire;
+
+        inputChat.dispatchEvent(
+            new InputEvent("input", {
+                bubbles: true,
+                inputType: "insertText",
+                data: commentaire
+            })
+        );
+    }
+
+    setTimeout(() => {
+        sendBtn.removeAttribute("disabled");
+        sendBtn.click();
+
+        console.log(
+            "[Tomy] Commentaire envoyé : " + commentaire
+        );
+
+        console.log(
+            "[Tomy] Mutes : " +
+            mutednbr +
+            " -- Blocks : " +
+            blockednbr
+        );
+    }, 400);
 }
 
 function attenteElementStable(timeoutMax = 2000) {
@@ -221,42 +298,197 @@ function attenteElementStable(timeoutMax = 2000) {
     });
 }
 
-function auChargementFenetre(event) {
-    const nouvelleFenetre = event.target.defaultView; 
-    const verifAffichage = setInterval(() => {
-        if (!nouvelleFenetre || !nouvelleFenetre.document) return;
-        const alpha = nouvelleFenetre.document.querySelectorAll('#app li');
-        if (alpha && alpha.length > 0) {
-            clearInterval(verifAffichage); 
-            const cible = alpha[0];
-            cible.click();
-            var beta = nouvelleFenetre.document.querySelector('button[role="switch"]');
-            if (beta) beta.click();
+let automatisationFenetreInstallee = false;
+let desactivationCommentairesEnCours = false;
+let commentairesDesactivesParExtension = false;
+function attendreDansFenetre(
+    nouvelleFenetre,
+    selecteur,
+    timeoutMax = 10000
+) {
+    return new Promise((resolve, reject) => {
+        const debut = Date.now();
+
+        const interval = setInterval(() => {
+            try {
+                if (
+                    !nouvelleFenetre ||
+                    nouvelleFenetre.closed
+                ) {
+                    clearInterval(interval);
+                    reject(
+                        new Error("La fenêtre a été fermée")
+                    );
+                    return;
+                }
+
+                const element =
+                    nouvelleFenetre.document.querySelector(
+                        selecteur
+                    );
+
+                if (element) {
+                    clearInterval(interval);
+                    resolve(element);
+                    return;
+                }
+
+                if (Date.now() - debut > timeoutMax) {
+                    clearInterval(interval);
+                    reject(
+                        new Error(
+                            `Élément introuvable : ${selecteur}`
+                        )
+                    );
+                }
+            } catch (error) {
+                if (Date.now() - debut > timeoutMax) {
+                    clearInterval(interval);
+                    reject(error);
+                }
+            }
+        }, 100);
+    });
+}
+async function auChargementFenetre(event) {
+    const nouvelleFenetre = event.target.defaultView;
+
+    try {
+        console.log(
+            "[Tomy] Fenêtre de configuration chargée."
+        );
+
+        const cible = await attendreDansFenetre(
+            nouvelleFenetre,
+            "#app li",
+            10000
+        );
+
+        cible.click();
+
+        console.log(
+            "[Tomy] Première option de configuration cliquée."
+        );
+
+        const beta = await attendreDansFenetre(
+            nouvelleFenetre,
+            'button[role="switch"]',
+            5000
+        );
+
+        const etatAvant =
+            beta.getAttribute("aria-checked");
+
+        console.log(
+            "[Tomy] État du switch avant le clic :",
+            etatAvant
+        );
+
+        if (commentairesDesactivesParExtension) {
+            console.log(
+                "[Tomy] Commentaires déjà désactivés."
+            );
+            return;
         }
-    }, 100); 
+        beta.click();
+
+        commentairesDesactivesParExtension = true;
+
+        console.log(
+            "[Tomy] Switch des commentaires cliqué."
+        );
+    } catch (error) {
+        console.error(
+            "[Tomy] Impossible de désactiver les commentaires :",
+            error.message
+        );
+    } finally {
+        desactivationCommentairesEnCours = false;
+    }
 }
 
 function automatiserNouvelleFenetre() {
+    if (automatisationFenetreInstallee) {
+        return;
+    }
+
+    automatisationFenetreInstallee = true;
+
     const originalOpen = window.open;
+
     window.open = function(...args) {
-        const nouvelleFenetre = originalOpen.apply(this, args);
+        const nouvelleFenetre =
+            originalOpen.apply(this, args);
+
         if (nouvelleFenetre) {
-            nouvelleFenetre.removeEventListener('load', auChargementFenetre);
-            nouvelleFenetre.addEventListener('load', auChargementFenetre);
+            nouvelleFenetre.removeEventListener(
+                "load",
+                auChargementFenetre
+            );
+
+            nouvelleFenetre.addEventListener(
+                "load",
+                auChargementFenetre
+            );
         }
+
         return nouvelleFenetre;
     };
+
+    console.log(
+        "[Tomy] Automatisation de la fenêtre installée."
+    );
 }
 
 async function disableAllComments() {
+    if (
+        desactivationCommentairesEnCours ||
+        commentairesDesactivesParExtension
+    ) {
+        console.warn(
+            "[Tomy] Désactivation déjà faite ou en cours."
+        );
+        return;
+    }
+
+    desactivationCommentairesEnCours = true;
     try {
         automatiserNouvelleFenetre();
         const toggleBtn = document.querySelector('[data-e2e="live-chat-container"]');
-        if (!toggleBtn) return;
-        var lav_a = toggleBtn.children;
-        var lav_b = lav_a[1].children;
-        var lav_c = lav_b[0].children;
+        if (!toggleBtn) {
+            throw new Error(
+                "Conteneur du chat TikTok introuvable"
+            );
+        }
+        const lav_a = toggleBtn.children;
+
+        if (!lav_a[1]) {
+            throw new Error(
+                "Étape lav_a[1] introuvable dans le chat"
+            );
+        }
+
+        const lav_b = lav_a[1].children;
+
+        if (!lav_b[0]) {
+            throw new Error(
+                "Étape lav_b[0] introuvable dans le chat"
+            );
+        }
+
+        const lav_c = lav_b[0].children;
+
+        if (!lav_c[1]) {
+            throw new Error(
+                "Bouton lav_c[1] introuvable dans le chat"
+            );
+        }
+
         lav_c[1].click();
+
+        console.log(
+            "[Tomy] Premier bouton de modération cliqué."
+        );
 
         const toggleBtnB = await new Promise((resolve, reject) => {
             const debut = Date.now();
@@ -272,8 +504,28 @@ async function disableAllComments() {
             }, 30);
         });
 
-        if (toggleBtnB) toggleBtnB.click();
-    } catch(e) {}
+        if (!toggleBtnB) {
+            throw new Error(
+                "Bouton ouvrant la configuration introuvable"
+            );
+        }
+
+        toggleBtnB.click();
+
+        // Si la fenêtre ne s’ouvre pas, autoriser une autre
+        // tentative après 15 secondes.
+        setTimeout(() => {
+            if (!commentairesDesactivesParExtension) {
+                desactivationCommentairesEnCours = false;
+            }
+        }, 15000);
+    } catch(error) {
+        desactivationCommentairesEnCours = false;
+        console.error(
+            "[Tomy] Échec de la désactivation des commentaires :",
+            error
+        );
+    }
 }
 
 // ==========================================
@@ -292,7 +544,6 @@ async function executerFileModeration() {
 
     try {
         if (document.body.contains(commentNode) && !commentNode.dataset.modere) {
-            commentNode.dataset.modere = "true";
 
             const moreBtn = commentNode.querySelector('.moreActionButton, [data-e2e*="more"], button');
             if (moreBtn) {
@@ -314,15 +565,42 @@ async function executerFileModeration() {
                         blockBtn = menuItem;
                     }
                 });
+                if (dangerLevel === 4) {
+                    // Niveau 4 : muter puis bloquer
+                    if (!muteLiveBtn) {
+                        throw new Error(
+                            "Bouton de sourdine introuvable pour le niveau 4"
+                        );
+                    }
 
-                if ((dangerLevel > 1 && dangerLevel < 4 && muteLiveBtn && !configor.acceptInsult) || dangerLevel === 4) {
+                    if (!blockBtn) {
+                        throw new Error(
+                            "Bouton de blocage introuvable pour le niveau 4"
+                        );
+                    }
+
                     muteLiveBtn.click();
                     mutednbr++;
-                }
-                if (dangerLevel === 4 && blockBtn) {
-                    await new Promise(r => setTimeout(r, 80));
+
+                    // Laisser à TikTok le temps de traiter la sourdine
+                    await new Promise(r => setTimeout(r, 75));
+
                     blockBtn.click();
                     blockednbr++;
+
+                    commentNode.dataset.modere = "true";
+                }
+                else if (dangerLevel === 2 || dangerLevel === 3) {
+                    // Niveau 2 : toujours muter
+                    // Niveau 3 : produit seulement si les insultes sont interdites
+                    if (!muteLiveBtn) {
+                        throw new Error("Bouton de sourdine introuvable");
+                    }
+
+                    muteLiveBtn.click();
+                    mutednbr++;
+
+                    commentNode.dataset.modere = "true";
                 }
 
                 if (configor.removeAfter) {
@@ -330,10 +608,20 @@ async function executerFileModeration() {
                 } else {
                     commentNode.style.background = dangerLevel === 4 ? 'crimson' : 'gold';
                 }
+            } else {
+                throw new Error(
+                    "Bouton d’action du commentaire introuvable"
+                );
             }
         }
     } catch (error) {
-        // En cas d'erreur de popover, on ignore silencieusement pour ne pas bloquer la file
+        commentNode.removeAttribute("data-mod-checked");
+        commentNode.removeAttribute("data-modere");
+
+        console.warn(
+            "[Tomy] Modération échouée, nouvelle tentative possible :",
+            error.message
+        );
     } finally {
         // Cadencement stable entre chaque action de modération (50ms) pour absorber les gros volumes
         setTimeout(executerFileModeration, 50);
@@ -343,8 +631,32 @@ async function executerFileModeration() {
 // ==========================================
 // 6. BOUCLE DE SURVEILLANCE
 // ==========================================
+const niveau4Recents = [];
+let commentairesNiveau4Comptes = new WeakSet();
+function enregistrerNiveau4() {
+    const maintenant = Date.now();
+    const fenetreMs = timeReapeat * 1000;
+
+    niveau4Recents.push(maintenant);
+
+    while (
+        niveau4Recents.length > 0 &&
+        niveau4Recents[0] < maintenant - fenetreMs
+    ) {
+        niveau4Recents.shift();
+    }
+
+    if (niveau4Recents.length >= configor.seuilSpamDangereux) {
+        console.warn(
+            `[Tomy] ⚠️ Raid détecté : ${niveau4Recents.length} commentaires niveau 4 en ${timeReapeat} secondes.`
+        );
+
+        niveau4Recents.length = 0;
+        disableAllComments();
+    }
+}
 function demarrerSurveillance() {
-    if (livedone) return;
+     if (!isModoActive || livedone) return;
 
     const termino = document.querySelector('[data-e2e="live-content-container"] .H2-Medium');
     if (termino && termino.textContent === 'Le LIVE est terminé') {
@@ -357,11 +669,8 @@ function demarrerSurveillance() {
     const commentaires = document.querySelectorAll('div[data-e2e="chat-message"]:not([data-mod-checked="true"])');
     
     if (commentaires && commentaires.length > 0) {
-        let compteDangereux = 0;
-
         commentaires.forEach(node => {
             dernierCommentaireTimestamp = Date.now();
-            node.setAttribute('data-mod-checked', 'true');
 
             try {
                 var sonfils_1 = node.getElementsByTagName('div');
@@ -378,12 +687,17 @@ function demarrerSurveillance() {
                             console.log('[Tomy] mute+BLOCK com: ' + contenu);
                         }
 
-                        if (danger > 3) {
-                            compteDangereux++;
+                        if (
+                            danger === 4 &&
+                            !commentairesNiveau4Comptes.has(node)
+                        ) {
+                            commentairesNiveau4Comptes.add(node);
+                            enregistrerNiveau4();
                         }
 
                         if (danger < 2) {
                             // Couleur greenyellow garantie pour les commentaires propres
+                            node.setAttribute("data-mod-checked", "true");
                             node.style.background = 'greenyellow';
                             if (configor.removeAfter) {
                                 setTimeout(() => {
@@ -391,13 +705,13 @@ function demarrerSurveillance() {
                                 }, 200);
                             }
                         } else {
-                            // Message toxique ou spam détecté : envoi dans la file d'attente asynchrone
-                            node.style.background = danger === 4 ? 'crimson' : 'gold';
-
                             if (moderationQueue.length >= MAX_QUEUE_SIZE) {
-                                moderationQueue.shift(); // Écarter le plus ancien si la file sature lors d'un pic extrême
+                                node.removeAttribute("data-mod-checked");
+                                return;
                             }
 
+                            node.setAttribute("data-mod-checked", "true");
+                            node.style.background = danger === 4 ? "crimson" : "gold";
                             moderationQueue.push({ node, danger });
 
                             if (!isProcessingQueue) {
@@ -408,16 +722,13 @@ function demarrerSurveillance() {
                 }
             } catch(err) {}
         });
-
-        // Sécurité anti-raid massif
-        if (compteDangereux >= configor.seuilSpamDangereux) {
-            disableAllComments();
-            console.warn(`[Tomy] ⚠️ Raid massif détecté : ${compteDangereux} spams simultanés.`);
-        }
     }
 
-    if (!livedone) {
-        surveillanceTimeout = setTimeout(demarrerSurveillance, 200); // Cadence rapide à 200ms
+    if (isModoActive && !livedone) {
+        surveillanceTimeout = setTimeout(() => {
+            surveillanceTimeout = null;
+            demarrerSurveillance();
+        }, 200);
     }
 }
 
@@ -425,9 +736,22 @@ function arreterModoComplet() {
     clearInterval(interval_1);
     clearInterval(interval_2);
     clearTimeout(surveillanceTimeout);
+
+    interval_1 = null;
+    interval_2 = null;
+    surveillanceTimeout = null;
+
+    isModoActive = false;
     livedone = true;
+
     moderationQueue = [];
     isProcessingQueue = false;
-}
+    trackerCompteurSpam.clear();
+    niveau4Recents.length = 0;
+    commentairesNiveau4Comptes = new WeakSet();
 
+    desactivationCommentairesEnCours = false;
+    commentairesDesactivesParExtension = false;
+    nombreVerificationsChatAbsent = 0;
+}
 console.warn("[Tomy] 🛡️ Modérateur TikTok anti-trolls prêt avec file d'attente optimisée !");
