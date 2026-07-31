@@ -841,6 +841,7 @@ function demarrerSurveillance() {
                             // Couleur greenyellow garantie pour les commentaires propres
                             node.setAttribute("data-mod-checked", "true");
                             node.style.background = 'greenyellow';
+                            node.style.color = '#000';
                             if (configor.removeAfter) {
                                 setTimeout(() => {
                                     if (node && node.parentNode) node.remove();
