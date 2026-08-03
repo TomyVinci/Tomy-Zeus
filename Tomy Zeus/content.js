@@ -12,7 +12,7 @@ let timeReapeat = 10;
 const configor = {
     acceptInsult: 0, 
     seuilSpamDangereux: 10, 
-    messageAuto: [""], 
+    messageAuto: [], 
     removeAfter: false, 
     motsNiveau2: [
         "𒌧𒈙𒈙ဪဪV𒀱𒈓𒈙꧅", "﷽𒈙ဪဪV𒀱𒈓𒈙꧅𒈙𒈙ဪzဪ𒈙𒈙𒈙﷽ဪ♗ဪ", 
@@ -137,7 +137,7 @@ chrome.runtime.sendMessage(
             (response && response.status)
         ) {
             if (repriseAutomatiqueDemandee) {
-                console.warn(
+                console.info(
                     "[Tomy] 🔄 Reprise automatique après rechargement."
                 );
 
@@ -160,7 +160,7 @@ if (repriseAutomatiqueDemandee) {
 
 function activerModo() {
     if (isModoActive) {
-        console.warn("[Tomy] Le modérateur est déjà actif.");
+        console.log("[Tomy] Le modérateur est déjà actif.");
         return;
     }
 
@@ -175,7 +175,7 @@ function activerModo() {
     nombreVerificationsChatAbsent = 0;
 
     chargerParametres(() => {
-        console.warn("🛡️ [Tomy] Modérateur ACTIVÉ.");
+        console.info("🛡️ [Tomy] Modérateur ACTIVÉ.");
 
         demarrerSurveillance();
 
@@ -197,7 +197,7 @@ chrome.runtime.onMessage.addListener((request) => {
         if (request.status) {
             activerModo();
         } else {
-            console.warn("🛑 [Tomy] Modérateur ARRÊTÉ.");
+            console.info("🛑 [Tomy] Modérateur ARRÊTÉ.");
             arreterModoComplet();
         }
     }
@@ -245,7 +245,7 @@ function demanderRechargement(raison) {
     if (rechargementEnCours || !isModoActive || livedone) return;
 
     rechargementEnCours = true;
-    console.warn(`[Tomy] 🔄 ${raison} Sauvegarde de l’état puis rechargement.`);
+    console.info(`[Tomy] 🔄 ${raison} Sauvegarde de l’état puis rechargement.`);
 
     // Ce drapeau garantit la reprise même si le service worker Chrome
     // est endormi ou ne répond pas avant le rechargement.
@@ -556,14 +556,14 @@ async function disableAllComments() {
         desactivationCommentairesEnCours ||
         commentairesDesactivesParExtension
     ) {
-        console.warn(
+        console.info(
             "[Tomy] Désactivation déjà faite ou en cours."
         );
         return;
     }
 
     desactivationCommentairesEnCours = true;
-    console.warn(
+    console.error(
         "[Tomy] 🚨 disableAllComments() lancée : ouverture des réglages du chat."
     );
     try {
@@ -740,7 +740,7 @@ async function executerFileModeration() {
         commentNode.removeAttribute("data-mod-checked");
         commentNode.removeAttribute("data-modere");
 
-        console.warn(
+        console.error(
             "[Tomy] Modération échouée, nouvelle tentative possible :",
             error.message
         );
@@ -787,7 +787,7 @@ function enregistrerNiveau4() {
     );
 
     if (compteurNiveau4Rafale >= configor.seuilSpamDangereux) {
-        console.warn(
+        console.error(
             `[Tomy] 🚨 Seuil atteint : tentative immédiate de désactivation des commentaires.`
         );
 
@@ -823,10 +823,10 @@ function demarrerSurveillance() {
                         const danger = getDangerLevel(contenu);
 
                         if (danger == 2 || danger == 3) {
-                            console.log('[Tomy] mute com: ' + contenu);
+                            console.warn('[Tomy] mute com: ' + contenu);
                         }
                         if (danger == 4) {
-                            console.log('[Tomy] mute+BLOCK com: ' + contenu);
+                            console.error('[Tomy] mute+BLOCK com: ' + contenu);
                         }
 
                         if (
@@ -840,7 +840,13 @@ function demarrerSurveillance() {
                         if (danger < 2) {
                             // Couleur greenyellow garantie pour les commentaires propres
                             node.setAttribute("data-mod-checked", "true");
-                            node.style.background = 'greenyellow';
+                            const estNotreCommentaire = configor.messageAuto.some(
+                                message => String(message).trim() === String(contenu).trim()
+                            );
+
+                            node.style.background = estNotreCommentaire
+                                ? "lightblue"
+                                : "greenyellow";
                             node.style.color = '#000';
                             if (configor.removeAfter) {
                                 setTimeout(() => {
@@ -905,4 +911,4 @@ function arreterModoComplet() {
     incidentNiveau4Actif = false;
     rechargementEnCours = false;
 }
-console.warn("[Tomy] 🛡️ Modérateur TikTok anti-trolls prêt avec file d'attente optimisée !");
+console.info("[Tomy] 🛡️ Modérateur TikTok anti-trolls prêt !");
