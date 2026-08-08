@@ -914,10 +914,10 @@ function demarrerSurveillance() {
                         );
 
                         if (danger == 2 || danger == 3) {
-                            console.warn('[Tomy] mute com: ' + contenu);
+                            console.warn('[Tomy] 🔇⚠️ mute com: ' + contenu);
                         }
                         if (danger == 4) {
-                            console.error('[Tomy] mute+BLOCK com: ' + contenu);
+                            console.error('[Tomy] 🔇❌ mute+BLOCK com: ' + contenu);
                         }
 
                         if (
