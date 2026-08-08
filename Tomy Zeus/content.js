@@ -12,7 +12,7 @@ let timeReapeat = 10;
 const configor = {
     acceptInsult: 0, 
     seuilSpamDangereux: 10, 
-    messageAuto: [], 
+    messageAuto: [🎉كبسو 👉🏻بارطاجيو➡️دعمو البث], 
     removeAfter: false, 
     motsNiveau2: [
         "𒌧𒈙𒈙ဪဪV𒀱𒈓𒈙꧅", "﷽𒈙ဪဪV𒀱𒈓𒈙꧅𒈙𒈙ဪzဪ𒈙𒈙𒈙﷽ဪ♗ဪ", 
@@ -50,7 +50,7 @@ const configor = {
         "thouqba", "thou9ba", "شرموط", "شراميط", "marochien", "stkhnk", "زب", "سوّة", "سوتمك", "سوّتمك", 
         "9lawi", "qlawi", "qlwi", "9elwa", "qelwa", "qlwa", "termet", "termat", "trmtymk", "trmtk",
         "طرمة", "طيز", "ذبيح", "أشلاء", "اشلاء", "تعطي", "زّب", "dba7", "dbe7", "dbah", "dbeh", "dhba7", "dhbe7", 
-        "dhbah", "dhbeh"
+        "dhbah", "dhbeh", "⡎⠀⠀⠀⠀⢀⠀⠉⠒⠤⣀⠀⠀⠀⠀⠀⠀⠀⠀ ⠀⠇⠀⠀⠀⠀⠀⢂⠀⠀⠀⠀⠉⠲⡴⠋⢢⠀⠀⠀ ⠀⠘⢄⠀⠀⠀⠀⢸⢲⠤⠤⣀⡀⠀⡇⠀⠀⠳⡄⠀ ⠀⠀⠈⠳⢤⣀⣤⣊⠌⠀⠀⠀⠈⠑⠺⣄⠀⠀⣸"
     ],
     motsNiveau1: ["فداج", "feddaj", "feddadj", "faddaj", "faddadj"]
 };
@@ -207,21 +207,103 @@ chrome.runtime.onMessage.addListener((request) => {
 // 3. FONCTIONS D'ANALYSE
 // ==========================================
 
+function retirerTagReponsePourAnalyseLangue(messageElement) {
+    const texteComplet = String(messageElement.textContent || "").trim();
+
+    // S'il ne commence pas par @, on ne change rien.
+    if (!texteComplet.startsWith("@")) return texteComplet;
+
+    // TikTok place normalement le @pseudo dans un lien séparé.
+    const copie = messageElement.cloneNode(true);
+
+    const tagReponse = [...copie.querySelectorAll("a")].find(lien => {
+        const texteTag = String(lien.textContent || "").trim();
+
+        return (
+            texteTag.startsWith("@") &&
+            texteComplet.startsWith(texteTag)
+        );
+    });
+
+    if (tagReponse) {
+        tagReponse.remove();
+    }
+
+    return String(copie.textContent || "").trim();
+}
 function isAsianOrIndicLanguage(text) {
     if (!text) return false;
     const regexBlocsAsiatiquesIndiens = /[\u4E00-\u9FAF\u3040-\u30FF\uAC00-\uD7AF\u0900-\u0DFF\u0E00-\u0EFF]/;   
     return regexBlocsAsiatiquesIndiens.test(text);
 }
+const cacheRegexMotsInterdits = new Map();
+function echapperRegExp(texte) {
+    return texte.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function contientMotInterdit(texte, mot) {
+    const terme = String(mot || "")
+        .trim()
+        .normalize("NFC");
 
-function getDangerLevel(text) {
+    if (!terme) return false;
+
+    let regex = cacheRegexMotsInterdits.get(terme);
+
+    if (!regex) {
+        // Lettres, chiffres, accents/diacritiques et underscore.
+        const caractereDeMot = /[\p{L}\p{N}\p{M}_]/u;
+
+        const caracteres = Array.from(terme);
+        const commenceParMot = caractereDeMot.test(caracteres[0]);
+        const finitParMot =
+            caractereDeMot.test(caracteres[caracteres.length - 1]);
+
+        const limiteDebut = commenceParMot
+            ? "(^|[^\\p{L}\\p{N}\\p{M}_])"
+            : "";
+
+        const limiteFin = finitParMot
+            ? "(?=$|[^\\p{L}\\p{N}\\p{M}_])"
+            : "";
+
+        regex = new RegExp(
+            limiteDebut +
+            echapperRegExp(terme) +
+            limiteFin,
+            "iu"
+        );
+
+        cacheRegexMotsInterdits.set(terme, regex);
+    }
+
+    return regex.test(
+        String(texte || "").normalize("NFC")
+    );
+}
+function getDangerLevel(text, textePourAnalyseLangue = text) {
     if (!text) return 0;
-    if (isAsianOrIndicLanguage(text)) return 4;
+    if (isAsianOrIndicLanguage(textePourAnalyseLangue)) return 4;
     
     const textLower = text.toLowerCase().trim();
 
-    if (configor.motsNiveau1.some(mot => mot && textLower.includes(mot))) return 4;
-    if (!configor.acceptInsult && configor.motsNiveau3.some(mot => mot && textLower.includes(mot))) return 3;
-    if (configor.motsNiveau2.some(mot => mot && textLower.includes(mot))) return 2;
+    if (
+        configor.motsNiveau1.some(
+            mot => contientMotInterdit(textLower, mot)
+        )
+    ) return 4;
+
+    if (
+        !configor.acceptInsult &&
+        configor.motsNiveau3.some(
+            mot => contientMotInterdit(textLower, mot)
+        )
+    ) return 3;
+
+    if (
+        configor.motsNiveau2.some(
+            mot => contientMotInterdit(textLower, mot)
+        )
+    ) return 2;
 
     if (textLower !== "3" && textLower !== "2" && textLower !== "1" && textLower !== "up") {
         let count = trackerCompteurSpam.get(textLower) || 0;
@@ -818,9 +900,18 @@ function demarrerSurveillance() {
                 if (sonfils_1 && sonfils_1[2]) {
                     var sonfils_2 = sonfils_1[2].getElementsByTagName('div');
                     if (sonfils_2 && sonfils_2[3]) {
-                        const contenu = sonfils_2[3].textContent;
+                        const contenuElement = sonfils_2[3];
+                        const contenu = contenuElement.textContent;
+
+                        const contenuSansTagReponse =
+                            retirerTagReponsePourAnalyseLangue(contenuElement);
+
                         enregistrerActiviteChat(contenu);
-                        const danger = getDangerLevel(contenu);
+
+                        const danger = getDangerLevel(
+                            contenu,
+                            contenuSansTagReponse
+                        );
 
                         if (danger == 2 || danger == 3) {
                             console.warn('[Tomy] mute com: ' + contenu);
