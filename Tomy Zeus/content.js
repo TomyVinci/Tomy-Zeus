@@ -12,7 +12,7 @@ let timeReapeat = 10;
 const configor = {
     acceptInsult: 0, 
     seuilSpamDangereux: 10, 
-    messageAuto: [🎉كبسو 👉🏻بارطاجيو➡️دعمو البث], 
+    messageAuto: ["🎉كبسو 👉🏻بارطاجيو➡️دعمو البث"], 
     removeAfter: false, 
     motsNiveau2: [
         "𒌧𒈙𒈙ဪဪV𒀱𒈓𒈙꧅", "﷽𒈙ဪဪV𒀱𒈓𒈙꧅𒈙𒈙ဪzဪ𒈙𒈙𒈙﷽ဪ♗ဪ", 
@@ -475,19 +475,50 @@ function postAutomatedComment() {
     }, 400);
 }
 
-function attenteElementStable(timeoutMax = 2000) {
+function attenteElementStable(timeoutMax = 3500) {
     return new Promise((resolve, reject) => {
         const debut = Date.now();
-        const interval = setInterval(() => {
-            const menuEl = document.querySelector('div[role="dialog"], [data-testid*="menu"], .tux-popover__inner-QJ4Cdu');
+
+        const verifier = () => {
+            const candidats = document.querySelectorAll(
+                'div[role="dialog"], ' +
+                '[data-testid*="menu"], ' +
+                '[class*="tux-popover__inner"], ' +
+                '[class*="tux-menu"]'
+            );
+
+            const menuEl = [...candidats].find(element => {
+                const texte = String(element.textContent || "")
+                    .trim()
+                    .toLowerCase();
+
+                const estVisible =
+                    element.isConnected &&
+                    element.getClientRects().length > 0;
+
+                const contientUneAction =
+                    texte.includes("sourdine") ||
+                    texte.includes("mute") ||
+                    texte.includes("bloquer") ||
+                    texte.includes("block");
+
+                return estVisible && contientUneAction;
+            });
+
             if (menuEl) {
-                clearInterval(interval);
                 resolve(menuEl);
-            } else if (Date.now() - debut > timeoutMax) {
-                clearInterval(interval);
-                reject(new Error("Menu popover introuvable"));
+                return;
             }
-        }, 30);
+
+            if (Date.now() - debut >= timeoutMax) {
+                reject(new Error("Menu popover introuvable"));
+                return;
+            }
+
+            setTimeout(verifier, 50);
+        };
+
+        verifier();
     });
 }
 
@@ -741,54 +772,99 @@ async function executerFileModeration() {
     try {
         if (document.body.contains(commentNode) && !commentNode.dataset.modere) {
 
-            const moreBtn = commentNode.querySelector('.moreActionButton, [data-e2e*="more"], button');
+            const boutonsVisibles = [...commentNode.querySelectorAll("button")]
+                .filter(bouton =>
+                    bouton.isConnected &&
+                    bouton.getClientRects().length > 0
+                );
+
+            const boutonsAction = [
+                ...commentNode.querySelectorAll(
+                    '.moreActionButton, [data-e2e*="more"]'
+                )
+            ];
+
+            const moreBtn =
+                boutonsAction.find(bouton =>
+                    bouton.isConnected &&
+                    bouton.getClientRects().length > 0
+                ) ||
+                boutonsVisibles.find(bouton => {
+                    const description = String(
+                        bouton.getAttribute("aria-label") ||
+                        bouton.getAttribute("title") ||
+                        ""
+                    ).toLowerCase();
+
+                    return (
+                        description.includes("more") ||
+                        description.includes("plus") ||
+                        description.includes("action")
+                    );
+                }) ||
+                boutonsVisibles[boutonsVisibles.length - 1];
+
             if (moreBtn) {
                 moreBtn.click();
 
-                await attenteElementStable(1500);
-                await new Promise(r => setTimeout(r, 40));
+                let menuEl;
 
-                const menuItems = document.querySelectorAll('div[role="dialog"] div, [data-testid*="menu"] div, .tux-menu-item');
-                let muteLiveBtn = null;
+                try {
+                    menuEl = await attenteElementStable(3500);
+                } catch (premiereErreur) {
+                    if (!moreBtn.isConnected || !commentNode.isConnected) {
+                        throw premiereErreur;
+                    }
+
+                    // Une seule deuxième tentative.
+                    await new Promise(r => setTimeout(r, 300));
+                    moreBtn.click();
+
+                    menuEl = await attenteElementStable(3500);
+                }
+
+                await new Promise(r => setTimeout(r, 80));
+
+                const menuItems = menuEl.querySelectorAll(
+                    'div, button, [role="menuitem"], .tux-menu-item'
+                );                let muteLiveBtn = null;
                 let blockBtn = null;
 
                 menuItems.forEach(menuItem => {
-                    const txt = menuItem.textContent.trim().toLowerCase();
-                    if (txt.includes('mettre en sourdine - live entier') || txt.includes('mute entire live') || txt.includes('sourdine')) {
+                    if (
+                        txt.includes("sourdine") ||
+                        txt.includes("mute")
+                    ) {
                         muteLiveBtn = menuItem;
                     }
-                    if (txt.includes('bloquer') || txt.includes('block')) {
+
+                    if (
+                        txt.includes("bloquer") ||
+                        txt.includes("block")
+                    ) {
                         blockBtn = menuItem;
                     }
                 });
                 if (dangerLevel === 4) {
-                    // Niveau 4 : muter d'abord, puis bloquer si possible.
-                    if (!muteLiveBtn && !blockBtn) {
-                        throw new Error(
-                            "Boutons de sourdine et de blocage introuvables pour le niveau 4"
-                        );
-                    }
-
-                    if (muteLiveBtn) {
-                        muteLiveBtn.click();
-                        mutednbr++;
-                        console.log("[Tomy] Action réussie : niveau 4 mis en sourdine.");
-
-                        // Laisser à TikTok le temps de traiter la sourdine.
-                        await new Promise(r => setTimeout(r, 75));
-                    } else {
-                        console.warn(
-                            "[Tomy] Niveau 4 : sourdine indisponible, tentative de blocage direct."
-                        );
-                    }
-
+                    // Niveau 4 : bloquer en priorité.
                     if (blockBtn) {
                         blockBtn.click();
                         blockednbr++;
-                        console.log("[Tomy] Action tentée : niveau 4 bloqué.");
-                    } else {
+
+                        console.log(
+                            "[Tomy] Action réussie : niveau 4 bloqué."
+                        );
+                    } else if (muteLiveBtn) {
+                        // Secours si TikTok ne propose pas le blocage.
+                        muteLiveBtn.click();
+                        mutednbr++;
+
                         console.warn(
-                            "[Tomy] Niveau 4 mis en sourdine, mais bouton de blocage introuvable."
+                            "[Tomy] Blocage indisponible : niveau 4 mis en sourdine."
+                        );
+                    } else {
+                        throw new Error(
+                            "Boutons de blocage et de sourdine introuvables pour le niveau 4"
                         );
                     }
 
@@ -819,8 +895,18 @@ async function executerFileModeration() {
             }
         }
     } catch (error) {
-        commentNode.removeAttribute("data-mod-checked");
         commentNode.removeAttribute("data-modere");
+        commentNode.setAttribute("data-mod-checked", "true");
+
+        // Nouvelle tentative après une seconde, pas immédiatement.
+        setTimeout(() => {
+            if (
+                commentNode.isConnected &&
+                !commentNode.dataset.modere
+            ) {
+                commentNode.removeAttribute("data-mod-checked");
+            }
+        }, 1000);
 
         console.error(
             "[Tomy] Modération échouée, nouvelle tentative possible :",
@@ -828,7 +914,7 @@ async function executerFileModeration() {
         );
     } finally {
         // Cadencement stable entre chaque action de modération (50ms) pour absorber les gros volumes
-        setTimeout(executerFileModeration, 50);
+        setTimeout(executerFileModeration, 100);
     }
 }
 
