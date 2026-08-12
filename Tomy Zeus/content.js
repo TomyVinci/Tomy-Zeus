@@ -25,7 +25,7 @@ const configor = {
         "egorger", "égorger"
     ], 
     motsNiveau3: [
-        "🍓", "💀", "☠", "🐷", "👽", "🖕", "nik", "nyk", "nicm", "نيك", 
+        "🍓", "💀", "☠", "🐷", "👽", "🖕", "nik", "nyk", "nicm", "نيك", "ܦ߳ߺܒߺࡅٜߺܘ߳", 
         "qhab", "qhaab", "qahab", "khab", "kahab", "k7ab", "ka7ab", "q7ab", "q7aab", "qa7ab", "qahba", "qahaba", 
         "kahaba", "qa7ba", "qa7aba", "قحاب", "قحبة", "rkhis", "rakhis", "rkhas", "rakhas", "رخيس", "رخاس", 
         "hachon", "hatchon", "7achon", "7atchon", "hachoun", "hatchoun", "7achoun", "7atchoun", "hachun", "hatchun", 
@@ -208,28 +208,46 @@ chrome.runtime.onMessage.addListener((request) => {
 // ==========================================
 
 function retirerTagReponsePourAnalyseLangue(messageElement) {
-    const texteComplet = String(messageElement.textContent || "").trim();
+    const texteComplet = String(
+        messageElement.textContent || ""
+    ).trim();
 
-    // S'il ne commence pas par @, on ne change rien.
-    if (!texteComplet.startsWith("@")) return texteComplet;
+    // Si le commentaire ne commence pas par @,
+    // il n'y a pas de tag de réponse à retirer.
+    if (!texteComplet.startsWith("@")) {
+        return texteComplet;
+    }
 
-    // TikTok place normalement le @pseudo dans un lien séparé.
     const copie = messageElement.cloneNode(true);
 
-    const tagReponse = [...copie.querySelectorAll("a")].find(lien => {
-        const texteTag = String(lien.textContent || "").trim();
+    // Cherche n'importe quel élément enfant contenant
+    // le @pseudo au tout début du commentaire.
+    const candidats = [...copie.querySelectorAll("*")]
+        .filter(element => {
+            const texteElement = String(
+                element.textContent || ""
+            ).trim();
 
-        return (
-            texteTag.startsWith("@") &&
-            texteComplet.startsWith(texteTag)
+            return (
+                texteElement.startsWith("@") &&
+                texteComplet.startsWith(texteElement)
+            );
+        })
+        .sort((a, b) =>
+            a.textContent.length - b.textContent.length
         );
-    });
+
+    // On prend le plus petit élément correspondant.
+    // Cela peut être <a>, <span>, <div>, etc.
+    const tagReponse = candidats[0];
 
     if (tagReponse) {
         tagReponse.remove();
     }
 
-    return String(copie.textContent || "").trim();
+    return String(
+        copie.textContent || ""
+    ).trim();
 }
 function isAsianOrIndicLanguage(text) {
     if (!text) return false;
@@ -768,8 +786,15 @@ async function executerFileModeration() {
     const item = moderationQueue.shift();
     const commentNode = item.node;
     const dangerLevel = item.danger;
+    const nomCompte = item.nomCompte || "Compte inconnu";
+    const contenu = item.contenu || "Commentaire inconnu";
 
     try {
+        if (!commentNode.isConnected) {
+            // Commentaire disparu : on l’ignore.
+            return;
+        }
+
         if (document.body.contains(commentNode) && !commentNode.dataset.modere) {
 
             const boutonsVisibles = [...commentNode.querySelectorAll("button")]
@@ -825,39 +850,164 @@ async function executerFileModeration() {
 
                 await new Promise(r => setTimeout(r, 80));
 
-                const menuItems = menuEl.querySelectorAll(
-                    'div, button, [role="menuitem"], .tux-menu-item'
-                );                let muteLiveBtn = null;
-                let blockBtn = null;
+                // Le commentaire a pu disparaître pendant l’ouverture du menu.
+                if (!commentNode.isConnected) {
+                    return;
+                }
 
-                menuItems.forEach(menuItem => {
+                const racinesMenu = [
+                    ...document.querySelectorAll(
+                        'div[role="dialog"], ' +
+                        '[data-testid*="menu"], ' +
+                        '[class*="tux-popover__inner"], ' +
+                        '[class*="tux-menu"]'
+                    )
+                ].filter(element => {
                     if (
-                        txt.includes("sourdine") ||
-                        txt.includes("mute")
+                        !element.isConnected ||
+                        element.getClientRects().length === 0
                     ) {
-                        muteLiveBtn = menuItem;
+                        return false;
                     }
 
-                    if (
-                        txt.includes("bloquer") ||
-                        txt.includes("block")
-                    ) {
-                        blockBtn = menuItem;
-                    }
+                    const texte = String(element.textContent || "")
+                        .trim()
+                        .toLowerCase();
+
+                    return (
+                        texte.includes("sourdine") ||
+                        texte.includes("mute") ||
+                        texte.includes("bloquer") ||
+                        texte.includes("block")
+                    );
                 });
+
+                const menuItems = [
+                    ...new Set(
+                        racinesMenu.flatMap(racine => [
+                            racine,
+                            ...racine.querySelectorAll(
+                                'div, button, [role="menuitem"], .tux-menu-item'
+                            )
+                        ])
+                    )
+                ];
+
+                function trouverActionMenu(motsCherches) {
+
+                    const lignesMenu = [
+                        ...menuEl.querySelectorAll(".tux-menu-item")
+                    ];
+
+                    for (const ligne of lignesMenu) {
+
+                        if (
+                            !ligne.isConnected ||
+                            ligne.getClientRects().length === 0
+                        ) {
+                            continue;
+                        }
+
+                        const texte = String(
+                            ligne.textContent || ""
+                        )
+                            .trim()
+                            .toLowerCase();
+
+                        const correspond =
+                            motsCherches.some(mot =>
+                                texte.includes(mot)
+                            );
+
+                        if (!correspond) {
+                            continue;
+                        }
+
+                        // TikTok place l'action réelle ici.
+                        const interaction = ligne.querySelector(
+                            '[data-testid="tux-web-interaction-container"]'
+                        );
+
+                        if (
+                            interaction &&
+                            interaction.isConnected &&
+                            interaction.getClientRects().length > 0
+                        ) {
+                            return interaction;
+                        }
+
+                        // Secours si TikTok change légèrement sa structure.
+                        return ligne;
+                    }
+
+                    return null;
+                }
+
+                function cliquerActionTikTok(element) {
+                    if (
+                        !element ||
+                        !element.isConnected ||
+                        element.getClientRects().length === 0
+                    ) {
+                        return false;
+                    }
+
+                    console.log(
+                        "[Tomy] Clic sur action :",
+                        element.textContent.trim()
+                    );
+
+                    element.click();
+
+                    return true;
+                }
+
+                const muteLiveBtn = trouverActionMenu([
+                    "sourdine",
+                    "mute"
+                ]);
+
+                const blockBtn = trouverActionMenu([
+                    "bloquer",
+                    "block"
+                ]);
+
+                console.log(
+                    `[Tomy] Actions détectées — ` +
+                    `Bloquer : ${Boolean(blockBtn)} — ` +
+                    `Sourdine : ${Boolean(muteLiveBtn)}`
+                );
+
                 if (dangerLevel === 4) {
                     // Niveau 4 : bloquer en priorité.
                     if (blockBtn) {
-                        blockBtn.click();
+                        cliquerActionTikTok(blockBtn);
                         blockednbr++;
+
+                        console.error(
+                            `[Tomy] ❌ BLOQUÉ — Compte : ${nomCompte}` +
+                            ` — Commentaire : "${contenu}"`
+                        );
 
                         console.log(
                             "[Tomy] Action réussie : niveau 4 bloqué."
                         );
                     } else if (muteLiveBtn) {
+                        console.log(
+                            "[Tomy] Clic SOURDINE sur :",
+                            muteLiveBtn,
+                            "texte =",
+                            muteLiveBtn?.textContent
+                        );
+
                         // Secours si TikTok ne propose pas le blocage.
-                        muteLiveBtn.click();
+                        cliquerActionTikTok(muteLiveBtn);
                         mutednbr++;
+
+                        console.warn(
+                            `[Tomy] MUTÉ 🔇 — Compte : ${nomCompte}` +
+                            ` — Commentaire : "${contenu}"`
+                        );
 
                         console.warn(
                             "[Tomy] Blocage indisponible : niveau 4 mis en sourdine."
@@ -877,8 +1027,13 @@ async function executerFileModeration() {
                         throw new Error("Bouton de sourdine introuvable");
                     }
 
-                    muteLiveBtn.click();
+                    cliquerActionTikTok(muteLiveBtn);
                     mutednbr++;
+
+                    console.warn(
+                        `[Tomy] MUTÉ 🔇 — Compte : ${nomCompte}` +
+                        ` — Commentaire : "${contenu}"`
+                    );
 
                     commentNode.dataset.modere = "true";
                 }
@@ -895,6 +1050,12 @@ async function executerFileModeration() {
             }
         }
     } catch (error) {
+        // Si TikTok a déjà retiré le commentaire, aucune erreur
+        // et aucune nouvelle tentative.
+        if (!commentNode.isConnected) {
+            return;
+        }
+
         commentNode.removeAttribute("data-modere");
         commentNode.setAttribute("data-mod-checked", "true");
 
@@ -986,6 +1147,17 @@ function demarrerSurveillance() {
                 if (sonfils_1 && sonfils_1[2]) {
                     var sonfils_2 = sonfils_1[2].getElementsByTagName('div');
                     if (sonfils_2 && sonfils_2[3]) {
+
+                        const nomElement = node.querySelector(
+                            '[data-e2e="message-owner-name"]'
+                        );
+
+                        const nomCompte = String(
+                            nomElement?.getAttribute("title") ||
+                            nomElement?.textContent ||
+                            "Compte inconnu"
+                        ).trim();
+
                         const contenuElement = sonfils_2[3];
                         const contenu = contenuElement.textContent;
 
@@ -998,13 +1170,6 @@ function demarrerSurveillance() {
                             contenu,
                             contenuSansTagReponse
                         );
-
-                        if (danger == 2 || danger == 3) {
-                            console.warn('[Tomy] 🔇⚠️ mute com: ' + contenu);
-                        }
-                        if (danger == 4) {
-                            console.error('[Tomy] 🔇❌ mute+BLOCK com: ' + contenu);
-                        }
 
                         if (
                             danger === 4 &&
@@ -1038,7 +1203,12 @@ function demarrerSurveillance() {
 
                             node.setAttribute("data-mod-checked", "true");
                             node.style.background = danger === 4 ? "crimson" : "gold";
-                            moderationQueue.push({ node, danger });
+                            moderationQueue.push({
+                                node,
+                                danger,
+                                nomCompte,
+                                contenu
+                            });
 
                             if (!isProcessingQueue) {
                                 executerFileModeration();
