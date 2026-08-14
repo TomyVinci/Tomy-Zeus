@@ -108,10 +108,11 @@ let nombreVerificationsChatAbsent = 0;
 const CLE_REPRISE_AUTOMATIQUE = "tomyModoRepriseApresReload";
 const trackerCompteurSpam = new Map();
 
-// File d'attente asynchrone pour encaisser les pics de 100 msg/sec sans rater ni bloquer le DOM
+// File d'attente asynchrone.
+// Tous les commentaires dangereux détectés sont ajoutés à la file.
+// Ils sont traités séquentiellement.
 let moderationQueue = [];
 let isProcessingQueue = false;
-const MAX_QUEUE_SIZE = 40;
 
 let repriseAutomatiqueDemandee = false;
 
@@ -255,9 +256,7 @@ function isAsianOrIndicLanguage(text) {
     return regexBlocsAsiatiquesIndiens.test(text);
 }
 const cacheRegexMotsInterdits = new Map();
-function echapperRegExp(texte) {
-    return texte.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
+function echapperRegExp(texte) {return texte.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}
 function contientMotInterdit(texte, mot) {
     const terme = String(mot || "")
         .trim()
@@ -493,7 +492,7 @@ function postAutomatedComment() {
     }, 400);
 }
 
-function attenteElementStable(timeoutMax = 3500) {
+function attenteElementStable(timeoutMax = 2000) {
     return new Promise((resolve, reject) => {
         const debut = Date.now();
 
@@ -533,172 +532,27 @@ function attenteElementStable(timeoutMax = 3500) {
                 return;
             }
 
-            setTimeout(verifier, 50);
+            setTimeout(verifier, 30);
         };
 
         verifier();
     });
 }
 
-let automatisationFenetreInstallee = false;
-let desactivationCommentairesEnCours = false;
 let commentairesDesactivesParExtension = false;
-function attendreDansFenetre(
-    nouvelleFenetre,
-    selecteur,
-    timeoutMax = 10000
-) {
-    return new Promise((resolve, reject) => {
-        const debut = Date.now();
-
-        const interval = setInterval(() => {
-            try {
-                if (
-                    !nouvelleFenetre ||
-                    nouvelleFenetre.closed
-                ) {
-                    clearInterval(interval);
-                    reject(
-                        new Error("La fenêtre a été fermée")
-                    );
-                    return;
-                }
-
-                const element =
-                    nouvelleFenetre.document.querySelector(
-                        selecteur
-                    );
-
-                if (element) {
-                    clearInterval(interval);
-                    resolve(element);
-                    return;
-                }
-
-                if (Date.now() - debut > timeoutMax) {
-                    clearInterval(interval);
-                    reject(
-                        new Error(
-                            `Élément introuvable : ${selecteur}`
-                        )
-                    );
-                }
-            } catch (error) {
-                if (Date.now() - debut > timeoutMax) {
-                    clearInterval(interval);
-                    reject(error);
-                }
-            }
-        }, 100);
-    });
-}
-async function auChargementFenetre(event) {
-    const nouvelleFenetre = event.target.defaultView;
-
-    try {
-        console.log(
-            "[Tomy] Fenêtre de configuration chargée."
-        );
-
-        const cible = await attendreDansFenetre(
-            nouvelleFenetre,
-            "#app li",
-            10000
-        );
-
-        cible.click();
-
-        console.log(
-            "[Tomy] Première option de configuration cliquée."
-        );
-
-        const beta = await attendreDansFenetre(
-            nouvelleFenetre,
-            'button[role="switch"]',
-            5000
-        );
-
-        const etatAvant =
-            beta.getAttribute("aria-checked");
-
-        console.log(
-            "[Tomy] État du switch avant le clic :",
-            etatAvant
-        );
-
-        if (commentairesDesactivesParExtension) {
-            console.log(
-                "[Tomy] Commentaires déjà désactivés."
-            );
-            return;
-        }
-        beta.click();
-
-        commentairesDesactivesParExtension = true;
-
-        console.log(
-            "[Tomy] Switch des commentaires cliqué."
-        );
-    } catch (error) {
-        console.error(
-            "[Tomy] Impossible de désactiver les commentaires :",
-            error.message
-        );
-    } finally {
-        desactivationCommentairesEnCours = false;
-    }
-}
-
-function automatiserNouvelleFenetre() {
-    if (automatisationFenetreInstallee) {
-        return;
-    }
-
-    automatisationFenetreInstallee = true;
-
-    const originalOpen = window.open;
-
-    window.open = function(...args) {
-        const nouvelleFenetre =
-            originalOpen.apply(this, args);
-
-        if (nouvelleFenetre) {
-            nouvelleFenetre.removeEventListener(
-                "load",
-                auChargementFenetre
-            );
-
-            nouvelleFenetre.addEventListener(
-                "load",
-                auChargementFenetre
-            );
-        }
-
-        return nouvelleFenetre;
-    };
-
-    console.log(
-        "[Tomy] Automatisation de la fenêtre installée."
-    );
-}
 
 async function disableAllComments() {
-    if (
-        desactivationCommentairesEnCours ||
-        commentairesDesactivesParExtension
-    ) {
+    if (commentairesDesactivesParExtension) {
         console.info(
             "[Tomy] Désactivation déjà faite ou en cours."
         );
         return;
     }
 
-    desactivationCommentairesEnCours = true;
     console.error(
         "[Tomy] 🚨 disableAllComments() lancée : ouverture des réglages du chat."
     );
     try {
-        automatiserNouvelleFenetre();
         const toggleBtn = document.querySelector('[data-e2e="live-chat-container"]');
         if (!toggleBtn) {
             throw new Error(
@@ -735,11 +589,35 @@ async function disableAllComments() {
             "[Tomy] Premier bouton de modération cliqué."
         );
 
-        const toggleBtnB = await new Promise((resolve, reject) => {
+        const debutConfiguration = Date.now();
+
+        const intervalConfiguration = setInterval(() => {
+            const el = document.querySelector(
+                '[data-testid="tux-config-provider"] .cursor-pointer.px-16'
+            );
+
+            if (el) {
+                clearInterval(intervalConfiguration);
+                el.click();
+                return;
+            }
+
+            if (Date.now() - debutConfiguration > 20000) {
+                clearInterval(intervalConfiguration);
+
+                console.error(
+                    "[Tomy] ❌ Bouton de configuration introuvable après 20 secondes."
+                );
+
+            }
+        }, 50);
+
+        /*const toggleBtnB = await new Promise((resolve, reject) => {
             const debut = Date.now();
             const interval = setInterval(() => {
                 const el = document.querySelector('[data-testid="tux-config-provider"] .cursor-pointer.px-16');
                 if (el) {
+                    el.click();
                     clearInterval(interval);
                     resolve(el);
                 } else if (Date.now() - debut > 2000) {
@@ -747,25 +625,13 @@ async function disableAllComments() {
                     reject(new Error("Bouton de configuration introuvable"));
                 }
             }, 30);
-        });
+        });*/
 
-        if (!toggleBtnB) {
-            throw new Error(
-                "Bouton ouvrant la configuration introuvable"
-            );
-        }
-
-        toggleBtnB.click();
+        //toggleBtnB.click();
 
         // Si la fenêtre ne s’ouvre pas, autoriser une autre
         // tentative après 15 secondes.
-        setTimeout(() => {
-            if (!commentairesDesactivesParExtension) {
-                desactivationCommentairesEnCours = false;
-            }
-        }, 15000);
     } catch(error) {
-        desactivationCommentairesEnCours = false;
         console.error(
             "[Tomy] Échec de la désactivation des commentaires :",
             error
@@ -777,13 +643,15 @@ async function disableAllComments() {
 // 5. GESTION DE LA FILE D'ATTENTE DE MODÉRATION (QUEUE)
 // ==========================================
 async function executerFileModeration() {
+    if (isProcessingQueue) return;
+    isProcessingQueue = true;
+
     if (moderationQueue.length === 0) {
         isProcessingQueue = false;
         return;
     }
 
-    isProcessingQueue = true;
-    const item = moderationQueue.shift();
+    const item = moderationQueue[0];
     const commentNode = item.node;
     const dangerLevel = item.danger;
     const nomCompte = item.nomCompte || "Compte inconnu";
@@ -835,26 +703,27 @@ async function executerFileModeration() {
                 let menuEl;
 
                 try {
-                    menuEl = await attenteElementStable(3500);
+                    menuEl = await attenteElementStable(2000);
                 } catch (premiereErreur) {
                     if (!moreBtn.isConnected || !commentNode.isConnected) {
                         throw premiereErreur;
                     }
 
                     // Une seule deuxième tentative.
-                    await new Promise(r => setTimeout(r, 300));
+                    await new Promise(r => setTimeout(r, 150));
                     moreBtn.click();
 
-                    menuEl = await attenteElementStable(3500);
+                    menuEl = await attenteElementStable(2000);
                 }
 
-                await new Promise(r => setTimeout(r, 80));
+                await new Promise(r => setTimeout(r, 30));
 
                 // Le commentaire a pu disparaître pendant l’ouverture du menu.
                 if (!commentNode.isConnected) {
                     return;
                 }
 
+                /*
                 const racinesMenu = [
                     ...document.querySelectorAll(
                         'div[role="dialog"], ' +
@@ -881,7 +750,6 @@ async function executerFileModeration() {
                         texte.includes("block")
                     );
                 });
-
                 const menuItems = [
                     ...new Set(
                         racinesMenu.flatMap(racine => [
@@ -892,6 +760,7 @@ async function executerFileModeration() {
                         ])
                     )
                 ];
+                */
 
                 function trouverActionMenu(motsCherches) {
 
@@ -943,7 +812,7 @@ async function executerFileModeration() {
                     return null;
                 }
 
-                function cliquerActionTikTok(element) {
+                async function cliquerActionTikTok(element) {
                     if (
                         !element ||
                         !element.isConnected ||
@@ -978,6 +847,8 @@ async function executerFileModeration() {
                     `Sourdine : ${Boolean(muteLiveBtn)}`
                 );
 
+                // je le laisse comme ça pour l'instant, que le mute, après je vais y penser
+                /*
                 if (dangerLevel === 4) {
                     // Niveau 4 : bloquer en priorité.
                     if (blockBtn) {
@@ -1020,14 +891,19 @@ async function executerFileModeration() {
 
                     commentNode.dataset.modere = "true";
                 }
-                else if (dangerLevel === 2 || dangerLevel === 3) {
+                
+                else */if (dangerLevel === 2 || dangerLevel === 3 || dangerLevel === 4) {
                     // Niveau 2 : toujours muter
                     // Niveau 3 : produit seulement si les insultes sont interdites
                     if (!muteLiveBtn) {
                         throw new Error("Bouton de sourdine introuvable");
                     }
 
-                    cliquerActionTikTok(muteLiveBtn);
+                    await cliquerActionTikTok(muteLiveBtn);
+                    // seulement si le traitement est terminé avec succès
+                    if (moderationQueue[0] === item) {
+                        moderationQueue.shift();
+                    }
                     mutednbr++;
 
                     console.warn(
@@ -1074,8 +950,8 @@ async function executerFileModeration() {
             error.message
         );
     } finally {
-        // Cadencement stable entre chaque action de modération (50ms) pour absorber les gros volumes
-        setTimeout(executerFileModeration, 100);
+        // Cadencement stable entre chaque action de modération (30ms) pour absorber les gros volumes
+        setTimeout(executerFileModeration, 30);
     }
 }
 
@@ -1161,8 +1037,7 @@ function demarrerSurveillance() {
                         const contenuElement = sonfils_2[3];
                         const contenu = contenuElement.textContent;
 
-                        const contenuSansTagReponse =
-                            retirerTagReponsePourAnalyseLangue(contenuElement);
+                        const contenuSansTagReponse = retirerTagReponsePourAnalyseLangue(contenuElement);
 
                         enregistrerActiviteChat(contenu);
 
@@ -1196,13 +1071,9 @@ function demarrerSurveillance() {
                                 }, 200);
                             }
                         } else {
-                            if (moderationQueue.length >= MAX_QUEUE_SIZE) {
-                                node.removeAttribute("data-mod-checked");
-                                return;
-                            }
-
                             node.setAttribute("data-mod-checked", "true");
                             node.style.background = danger === 4 ? "crimson" : "gold";
+
                             moderationQueue.push({
                                 node,
                                 danger,
@@ -1251,7 +1122,6 @@ function arreterModoComplet() {
     dernierNiveau4Timestamp = 0;
     commentairesNiveau4Comptes = new WeakSet();
 
-    desactivationCommentairesEnCours = false;
     commentairesDesactivesParExtension = false;
     nombreVerificationsChatAbsent = 0;
     derniereSignatureChatExterne = "";

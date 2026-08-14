@@ -28,6 +28,15 @@
       ],
       "js": ["content.js"],
       "run_at": "document_end"
+    },
+    {
+        "matches": [
+            "https://www.tiktok.com/*/live*",
+            "https://www.tiktok.com/live*"
+        ],
+        "js": ["main.js"],
+        "run_at": "document_start",
+        "world": "MAIN"
     }
   ]
 }
