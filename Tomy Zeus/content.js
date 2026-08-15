@@ -813,28 +813,74 @@ async function executerFileModeration() {
                 }
 
                 async function cliquerActionTikTok(element) {
-                    if (
-                        !element ||
-                        !element.isConnected ||
-                        element.getClientRects().length === 0
-                    ) {
-                        return false;
+
+                    const debut = Date.now();
+
+                    while (Date.now() - debut < 300) {
+
+                        if (
+                            element &&
+                            element.isConnected &&
+                            element.getClientRects().length > 0
+                        ) {
+                            console.log(
+                                "[Tomy] Clic sur action :",
+                                element.textContent.trim()
+                            );
+
+                            element.click();
+
+                            return true;
+                        }
+
+                        await new Promise(
+                            resolve => setTimeout(resolve, 30)
+                        );
                     }
 
-                    console.log(
-                        "[Tomy] Clic sur action :",
-                        element.textContent.trim()
+                    console.warn(
+                        "[Tomy] ⚠️ Bouton d'action introuvable après 300 ms."
                     );
 
-                    element.click();
-
-                    return true;
+                    return false;
                 }
 
-                const muteLiveBtn = trouverActionMenu([
+                async function attendreActionTikTok(
+                    mots,
+                    timeout = 300
+                ) {
+                    const debut = Date.now();
+
+                    while (Date.now() - debut < timeout) {
+
+                        const element = trouverActionMenu(mots);
+
+                        if (
+                            element &&
+                            element.isConnected &&
+                            element.getClientRects().length > 0
+                        ) {
+                            return element;
+                        }
+
+                        await new Promise(
+                            resolve => setTimeout(resolve, 30)
+                        );
+                    }
+
+                    return null;
+                }
+
+                const muteLiveBtn = await attendreActionTikTok([
                     "sourdine",
                     "mute"
                 ]);
+
+                if (!muteLiveBtn) {
+                    throw new Error(
+                        "Bouton de sourdine introuvable après 300 ms"
+                    );
+                }
 
                 const blockBtn = trouverActionMenu([
                     "bloquer",
@@ -898,9 +944,14 @@ async function executerFileModeration() {
                     if (!muteLiveBtn) {
                         throw new Error("Bouton de sourdine introuvable");
                     }
+                    const actionOK = await cliquerActionTikTok(muteLiveBtn);
 
-                    await cliquerActionTikTok(muteLiveBtn);
-                    // seulement si le traitement est terminé avec succès
+                    if (!actionOK) {
+                        throw new Error(
+                            "Échec du clic sur le bouton de sourdine"
+                        );
+                    }
+
                     if (moderationQueue[0] === item) {
                         moderationQueue.shift();
                     }
