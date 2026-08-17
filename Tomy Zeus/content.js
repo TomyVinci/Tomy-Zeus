@@ -113,6 +113,7 @@ const trackerCompteurSpam = new Map();
 // Ils sont traités séquentiellement.
 let moderationQueue = [];
 let isProcessingQueue = false;
+let moderationRetryTimer = null;
 
 let repriseAutomatiqueDemandee = false;
 
@@ -365,7 +366,7 @@ function demanderRechargement(raison) {
     // Secours si la réponse du service worker n'arrive pas.
     setTimeout(() => {
         if (rechargementEnCours) location.reload();
-    }, 1500);
+    }, 5000);
 }
 
 function verifierEtatChat() {
@@ -384,7 +385,7 @@ function verifierEtatChat() {
         nombreVerificationsChatAbsent = 0;
     }
 
-    if (nombreVerificationsChatAbsent >= 3) {
+    if (nombreVerificationsChatAbsent >= 6) {
         demanderRechargement(
             "Interface du chat absente pendant 15 secondes."
         );
@@ -392,7 +393,7 @@ function verifierEtatChat() {
     }
 
     const chatFige =
-        Date.now() - dernierCommentaireTimestamp > 45000;
+        Date.now() - dernierCommentaireTimestamp > 120000;
 
     if (chatFige) {
         demanderRechargement(
@@ -492,11 +493,13 @@ function postAutomatedComment() {
     }, 400);
 }
 
-function attenteElementStable(timeoutMax = 2000) {
+function attenteElementStable(timeoutMax = 5000) {
     return new Promise((resolve, reject) => {
+
         const debut = Date.now();
 
         const verifier = () => {
+
             const candidats = document.querySelectorAll(
                 'div[role="dialog"], ' +
                 '[data-testid*="menu"], ' +
@@ -505,34 +508,43 @@ function attenteElementStable(timeoutMax = 2000) {
             );
 
             const menuEl = [...candidats].find(element => {
-                const texte = String(element.textContent || "")
-                    .trim()
-                    .toLowerCase();
 
-                const estVisible =
-                    element.isConnected &&
-                    element.getClientRects().length > 0;
+                if (
+                    !element.isConnected ||
+                    element.getClientRects().length === 0
+                ) {
+                    return false;
+                }
 
-                const contientUneAction =
-                    texte.includes("sourdine") ||
-                    texte.includes("mute") ||
-                    texte.includes("bloquer") ||
-                    texte.includes("block");
-
-                return estVisible && contientUneAction;
+                // On ne regarde PLUS le texte.
+                // Le menu peut être en français, finnois,
+                // anglais, etc.
+                return !!element.querySelector(
+                    ".tux-menu-item"
+                );
             });
 
             if (menuEl) {
-                resolve(menuEl);
-                return;
+
+                console.log(
+                    "[Tomy] ✅ Menu de modération réellement détecté."
+                );
+
+                return resolve(menuEl);
             }
 
             if (Date.now() - debut >= timeoutMax) {
-                reject(new Error("Menu popover introuvable"));
+
+                reject(
+                    new Error(
+                        "Menu de modération introuvable après 5 secondes."
+                    )
+                );
+
                 return;
             }
 
-            setTimeout(verifier, 30);
+            setTimeout(verifier, 100);
         };
 
         verifier();
@@ -642,6 +654,16 @@ async function disableAllComments() {
 // ==========================================
 // 5. GESTION DE LA FILE D'ATTENTE DE MODÉRATION (QUEUE)
 // ==========================================
+function programmerExecutionModeration(delai = 50) {
+    if (moderationRetryTimer !== null) {
+        return;
+    }
+
+    moderationRetryTimer = setTimeout(() => {
+        moderationRetryTimer = null;
+        executerFileModeration();
+    }, delai);
+}
 async function executerFileModeration() {
     if (isProcessingQueue) return;
     isProcessingQueue = true;
@@ -659,7 +681,11 @@ async function executerFileModeration() {
 
     try {
         if (!commentNode.isConnected) {
-            // Commentaire disparu : on l’ignore.
+            // Le commentaire n'existe plus : il ne doit plus rester dans la queue.
+            if (moderationQueue[0] === item) {
+                moderationQueue.shift();
+            }
+
             return;
         }
 
@@ -812,42 +838,9 @@ async function executerFileModeration() {
                     return null;
                 }
 
-                async function cliquerActionTikTok(element) {
-
-                    const debut = Date.now();
-
-                    while (Date.now() - debut < 300) {
-
-                        if (
-                            element &&
-                            element.isConnected &&
-                            element.getClientRects().length > 0
-                        ) {
-                            console.log(
-                                "[Tomy] Clic sur action :",
-                                element.textContent.trim()
-                            );
-
-                            element.click();
-
-                            return true;
-                        }
-
-                        await new Promise(
-                            resolve => setTimeout(resolve, 30)
-                        );
-                    }
-
-                    console.warn(
-                        "[Tomy] ⚠️ Bouton d'action introuvable après 300 ms."
-                    );
-
-                    return false;
-                }
-
                 async function attendreActionTikTok(
                     mots,
-                    timeout = 300
+                    timeout = 2000
                 ) {
                     const debut = Date.now();
 
@@ -864,16 +857,65 @@ async function executerFileModeration() {
                         }
 
                         await new Promise(
-                            resolve => setTimeout(resolve, 30)
+                            resolve => setTimeout(resolve, 100)
                         );
                     }
 
                     return null;
                 }
 
+                async function cliquerActionTikTok(
+                    element,
+                    menuEl
+                ) {
+
+                    if (
+                        !element ||
+                        !element.isConnected ||
+                        element.getClientRects().length === 0
+                    ) {
+                        return false;
+                    }
+
+                    console.log(
+                        "[Tomy] 🖱️ Clic sur action :",
+                        element.textContent.trim()
+                    );
+
+                    element.click();
+
+                    const debut = Date.now();
+
+                    while (Date.now() - debut < 3000) {
+
+                        await new Promise(
+                            resolve => setTimeout(resolve, 100)
+                        );
+
+                        if (
+                            !menuEl ||
+                            !menuEl.isConnected ||
+                            menuEl.getClientRects().length === 0
+                        ) {
+                            console.log(
+                                "[Tomy] ✅ Menu fermé : action confirmée."
+                            );
+
+                            return true;
+                        }
+                    }
+
+                    console.error(
+                        "[Tomy] ❌ Le menu est toujours ouvert après 3 secondes."
+                    );
+
+                    return false;
+                }
+
                 const muteLiveBtn = await attendreActionTikTok([
                     "sourdine",
-                    "mute"
+                    "mute",
+                    "mykistä"
                 ]);
 
                 if (!muteLiveBtn) {
@@ -944,7 +986,11 @@ async function executerFileModeration() {
                     if (!muteLiveBtn) {
                         throw new Error("Bouton de sourdine introuvable");
                     }
-                    const actionOK = await cliquerActionTikTok(muteLiveBtn);
+                    //const actionOK = await cliquerActionTikTok(muteLiveBtn);
+                    const actionOK = await cliquerActionTikTok(
+                        muteLiveBtn,
+                        menuEl
+                    );
 
                     if (!actionOK) {
                         throw new Error(
@@ -987,7 +1033,7 @@ async function executerFileModeration() {
         commentNode.setAttribute("data-mod-checked", "true");
 
         // Nouvelle tentative après une seconde, pas immédiatement.
-        setTimeout(() => {
+        /*setTimeout(() => {
             if (
                 commentNode.isConnected &&
                 !commentNode.dataset.modere
@@ -996,13 +1042,28 @@ async function executerFileModeration() {
             }
         }, 1000);
 
+        item.retryCount = (item.retryCount || 0) + 1;
+
+        if (item.retryCount >= 3) {
+            console.error(
+                "[Tomy] ❌ 3 échecs de modération : abandon de cet élément pour éviter une boucle."
+            );
+
+            if (moderationQueue[0] === item) {
+                moderationQueue.shift();
+            }
+        }*/
+
         console.error(
             "[Tomy] Modération échouée, nouvelle tentative possible :",
             error.message
         );
     } finally {
-        // Cadencement stable entre chaque action de modération (30ms) pour absorber les gros volumes
-        setTimeout(executerFileModeration, 30);
+        isProcessingQueue = false;
+
+        if (moderationQueue.length > 0) {
+            programmerExecutionModeration(500);
+        }
     }
 }
 
@@ -1168,6 +1229,7 @@ function arreterModoComplet() {
 
     moderationQueue = [];
     isProcessingQueue = false;
+    moderationRetryTimer = null;
     trackerCompteurSpam.clear();
     compteurNiveau4Rafale = 0;
     dernierNiveau4Timestamp = 0;
