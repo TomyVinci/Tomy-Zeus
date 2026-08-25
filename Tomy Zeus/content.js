@@ -14,6 +14,9 @@ const configor = {
     seuilSpamDangereux: 10, 
     messageAuto: ["🎉كبسو 👉🏻بارطاجيو➡️دعمو البث"], 
     removeAfter: false, 
+    comptesAbloquer: [
+        "abdo.news.7", "Brighton 🇬🇧", "XXXXXXXXX"
+    ], 
     motsNiveau2: [
         "𒌧𒈙𒈙ဪဪV𒀱𒈓𒈙꧅", "﷽𒈙ဪဪV𒀱𒈓𒈙꧅𒈙𒈙ဪzဪ𒈙𒈙𒈙﷽ဪ♗ဪ", 
         "𒈙ဪဪ", "﷽", "﷽⦿꧅꧅𒈙𒈙ဪဪ", "💣", "💊", "💥", "☣", "☢", "🗡", "⚔", "☠", 
@@ -316,7 +319,6 @@ function getDangerLevel(text, textePourAnalyseLangue = text) {
             mot => contientMotInterdit(textLower, mot)
         )
     ) return 3;
-
     if (
         configor.motsNiveau2.some(
             mot => contientMotInterdit(textLower, mot)
@@ -1153,10 +1155,18 @@ function demarrerSurveillance() {
 
                         enregistrerActiviteChat(contenu);
 
-                        const danger = getDangerLevel(
-                            contenu,
-                            contenuSansTagReponse
-                        );
+                        var comptesAbloquer=configor.comptesAbloquer;
+
+                        let danger=0;
+                        if (comptesAbloquer.indexOf(nomCompte) > -1) {
+                            danger=4;
+                            console.warn(nomCompte+' trouvé !');
+                        } else {
+                            danger = getDangerLevel(
+                                contenu,
+                                contenuSansTagReponse
+                            );
+                        }
 
                         if (
                             danger === 4 &&
