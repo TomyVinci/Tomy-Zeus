@@ -15,7 +15,18 @@ const configor = {
     messageAuto: ["🎉كبسو 👉🏻بارطاجيو➡️دعمو البث"], 
     removeAfter: false, 
     comptesAbloquer: [
-        "abdo.news.7", "Brighton 🇬🇧", "XXXXXXXXX"
+        "abdo.news.7", "Brighton 🇬🇧", "tala_ⵙⵡⵙ-ⴰⴳⴰⴷⵢⵔـ34ـ33ـⵣ🇲🇦ⵥ", "PHENIX", "Ramzi tob", "تلمساني مغربي 🇲🇦🦁", 
+        "Oujdi_du59_🇲🇦💚❤️🇲🇦", "ninaninoucha250", "Firmus", "KASPERSKY 🐺🌶️😿💉", "sabrinaalilou", "algerianNY🇺🇸🇩🇿", 
+        "abdelbe10", "☄☄🦀🦀 abdo.news.4 🦀🦀☄☄", "XXXX"
+    ], 
+    comptesAepargner: [
+        "Tomy Zeus", "Tomy zeus", "MariaMoori", "mariamoori-eng", "mariamoori_fans", "Emma", "Emma Tari", 
+        "Chawki Benzehra", "BENZEHRA Chawki بن زهرة شوقي", "Mirou_🕊️", "mirou_Ath_Amghar", "Mirou_", 
+        "Raïd_13👁️", "Raïd_13", "Raïd-13", "volcan", "Luna ⴰⵢⵓⵔ 🇮🇨", "djura 15", "Thagmat Enni", 
+        "الدجال", "Nadori-F35✡️✝️☪️🇲🇦🇪🇦🇺🇲🫶", "Velqasemmehenni", "🇨🇭 waapy Suisse 🇨🇭", "Nadori-F35🇲🇦🇪🇦🇺🇲♥️", 
+        "Louisa", "severine", "MIROU_RECORDS 💥✨", "¹🄻ᴜᴄɪꜰᴇʀ🇺🇸", "Jeulia👱♀️", "abou Calypse", 
+        "dadi.19🏁🇨🇭🇩🇿✌️", "Amar Slimani", "AMIR DZ", "PariaS", "𝔞𝔪𝔢𝔩𝔦𝔢", "dessin portrait", "Laith AL Atlas", 
+        "مدران بن شيخ مندار بن عم عدلان", "YYY"
     ], 
     motsNiveau2: [
         "𒌧𒈙𒈙ဪဪV𒀱𒈓𒈙꧅", "﷽𒈙ဪဪV𒀱𒈓𒈙꧅𒈙𒈙ဪzဪ𒈙𒈙𒈙﷽ဪ♗ဪ", 
@@ -1156,11 +1167,14 @@ function demarrerSurveillance() {
                         enregistrerActiviteChat(contenu);
 
                         var comptesAbloquer=configor.comptesAbloquer;
+                        var comptesAepargner=configor.comptesAepargner;
 
                         let danger=0;
                         if (comptesAbloquer.indexOf(nomCompte) > -1) {
                             danger=4;
                             console.warn(nomCompte+' trouvé !');
+                        } else if (comptesAepargner.indexOf(nomCompte) > -1) {
+                            danger=0;
                         } else {
                             danger = getDangerLevel(
                                 contenu,
