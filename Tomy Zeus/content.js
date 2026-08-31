@@ -15,18 +15,19 @@ const configor = {
     messageAuto: ["🎉كبسو 👉🏻بارطاجيو➡️دعمو البث"], 
     removeAfter: false, 
     comptesAbloquer: [
-        "abdo.news.7", "Brighton 🇬🇧", "tala_ⵙⵡⵙ-ⴰⴳⴰⴷⵢⵔـ34ـ33ـⵣ🇲🇦ⵥ", "PHENIX", "Ramzi tob", "تلمساني مغربي 🇲🇦🦁", 
-        "Oujdi_du59_🇲🇦💚❤️🇲🇦", "ninaninoucha250", "Firmus", "KASPERSKY 🐺🌶️😿💉", "sabrinaalilou", "algerianNY🇺🇸🇩🇿", 
-        "abdelbe10", "☄☄🦀🦀 abdo.news.4 🦀🦀☄☄", "مدران بن شيخ مندار بن عم عدلان", "XXXX"
+        "abdo.news.7", "Brighton", "tala_ⵙⵡⵙ", "PHENIX", "Ramzi tob", "تلمساني مغربي ", 
+        "Oujdi_du59", "ninaninoucha250", "Firmus", "KASPERSKY", "sabrinaalilou", "algerianNY🇺🇸🇩🇿", 
+        "abdelbe10", "abdo.news.4", "مدران بن شيخ مندار بن عم عدلان", "Бунтарь", "moh solo", 
+        "Gareh", "XYAX"
     ], 
     comptesAepargner: [
         "Tomy Zeus", "Tomy zeus", "MariaMoori", "mariamoori-eng", "mariamoori_fans", "Emma", "Emma Tari", 
         "Chawki Benzehra", "BENZEHRA Chawki بن زهرة شوقي", "Mirou_🕊️", "mirou_Ath_Amghar", "Mirou_", 
-        "Raïd_13👁️", "Raïd_13", "Raïd-13", "volcan", "Luna ⴰⵢⵓⵔ 🇮🇨", "djura 15", "Thagmat Enni", "Jeulia👱♀️", 
-        "الدجال", "Nadori-F35✡️✝️☪️🇲🇦🇪🇦🇺🇲🫶", "Velqasemmehenni", "🇨🇭 waapy Suisse 🇨🇭", "Nadori-F35🇲🇦🇪🇦🇺🇲♥️", 
-        "Louisa", "severine", "MIROU_RECORDS 💥✨", "¹🄻ᴜᴄɪꜰᴇʀ🇺🇸", "abou Calypse", 
-        "dadi.19🏁🇨🇭🇩🇿✌️", "Amar Slimani", "AMIR DZ", "PariaS", "𝔞𝔪𝔢𝔩𝔦𝔢", "dessin portrait", "Laith AL Atlas", 
-        "YYY"
+        "Raïd_13👁️", "Raïd_13", "Raïd-13", "volcan", "Luna ⴰⵢⵓⵔ 🇮🇨", "djura 15", "Thagmat Enni", "Jeulia", 
+        "الدجال", "Nadori-F35", "Velqasemmehenni", "🇨🇭 waapy Suisse 🇨🇭", "𝑴𝒂𝒍𝒂𝒌", 
+        "Louisa", "severine", "MIROU_RECORDS", "¹🄻ᴜᴄɪꜰᴇʀ🇺🇸", "abou Calypse", "فايزة🇲🇦", 
+        "dadi.19", "Amar Slimani", "AMIR DZ", "PariaS", "𝔞𝔪𝔢𝔩𝔦𝔢", "dessin portrait", "Laith AL Atlas", 
+        "isconation4", "XYAX", "XYAX"
     ], 
     motsNiveau2: [
         "𒌧𒈙𒈙ဪဪV𒀱𒈓𒈙꧅", "﷽𒈙ဪဪV𒀱𒈓𒈙꧅𒈙𒈙ဪzဪ𒈙𒈙𒈙﷽ဪ♗ဪ", 
@@ -520,7 +521,37 @@ function attenteElementStable(timeoutMax = 5000) {
                 '[class*="tux-menu"]'
             );
 
+            const actionsSourdine = [
+                "sourdine",
+                "mute",
+                "mykistä"
+            ];
+
             const menuEl = [...candidats].find(element => {
+
+                if (
+                    !element.isConnected ||
+                    element.getClientRects().length === 0
+                ) {
+                    return false;
+                }
+
+                const texte = String(
+                    element.textContent || ""
+                ).trim().toLowerCase();
+
+                const contientAction =
+                    actionsSourdine.some(
+                        mot => texte.includes(mot)
+                    );
+
+                return (
+                    contientAction &&
+                    !!element.querySelector(".tux-menu-item")
+                );
+            });
+
+            /*const menuEl = [...candidats].find(element => {
 
                 if (
                     !element.isConnected ||
@@ -535,7 +566,7 @@ function attenteElementStable(timeoutMax = 5000) {
                 return !!element.querySelector(
                     ".tux-menu-item"
                 );
-            });
+            });*/
 
             if (menuEl) {
 
@@ -1128,6 +1159,7 @@ function enregistrerNiveau4() {
         void disableAllComments();
     }
 }
+function normaliserNomCompte(nom) {return String(nom || "").normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "")}
 function demarrerSurveillance() {
      if (!isModoActive || livedone) return;
 
@@ -1158,6 +1190,7 @@ function demarrerSurveillance() {
                             nomElement?.textContent ||
                             "Compte inconnu"
                         ).trim();
+                        const nomCompteNormalise = normaliserNomCompte(nomCompte);
 
                         const contenuElement = sonfils_2[3];
                         const contenu = contenuElement.textContent;
@@ -1166,14 +1199,19 @@ function demarrerSurveillance() {
 
                         enregistrerActiviteChat(contenu);
 
-                        var comptesAbloquer=configor.comptesAbloquer;
-                        var comptesAepargner=configor.comptesAepargner;
+                        const compteAseparer = configor.comptesAbloquer.some(
+                            compte => normaliserNomCompte(compte) === nomCompteNormalise
+                        );
+
+                        const compteAepargner = configor.comptesAepargner.some(
+                            compte => normaliserNomCompte(compte) === nomCompteNormalise
+                        );
 
                         let danger=0;
-                        if (comptesAbloquer.indexOf(nomCompte) > -1) {
+                        if (compteAseparer || nomCompte.length==0) {
                             danger=4;
-                            console.warn(nomCompte+' trouvé !');
-                        } else if (comptesAepargner.indexOf(nomCompte) > -1) {
+                            console.error('[Tomy] - Compte ennemi: '+nomCompte+' trouvé !');
+                        } else if (compteAepargner) {
                             danger=0;
                         } else {
                             danger = getDangerLevel(
@@ -1228,10 +1266,11 @@ function demarrerSurveillance() {
     }
 
     if (isModoActive && !livedone) {
+        const delaiSurveillance = moderationQueue.length > 0 ? 200 : 500;
         surveillanceTimeout = setTimeout(() => {
             surveillanceTimeout = null;
             demarrerSurveillance();
-        }, 200);
+        }, delaiSurveillance);
     }
 }
 
