@@ -18,7 +18,8 @@ const configor = {
         "abdo.news.7", "Brighton", "tala_ⵙⵡⵙ", "PHENIX", "Ramzi tob", "تلمساني مغربي ", 
         "Oujdi_du59", "ninaninoucha250", "Firmus", "KASPERSKY", "sabrinaalilou", "algerianNY🇺🇸🇩🇿", 
         "abdelbe10", "abdo.news.4", "مدران بن شيخ مندار بن عم عدلان", "Бунтарь", "moh solo", 
-        "Gareh", "XYAX"
+        "Gareh", "מוֹרֵד (moréd)", "biba", "itri", "Lilian", "Mãũreen", "hari75", 
+        "XYAX"
     ], 
     comptesAepargner: [
         "Tomy Zeus", "Tomy zeus", "MariaMoori", "mariamoori-eng", "mariamoori_fans", "Emma", "Emma Tari", 
@@ -1209,7 +1210,7 @@ function demarrerSurveillance() {
 
                         let danger=0;
                         if (compteAseparer || nomCompte.length==0) {
-                            danger=4;
+                            danger=3;
                             console.error('[Tomy] - Compte ennemi: '+nomCompte+' trouvé !');
                         } else if (compteAepargner) {
                             danger=0;
